@@ -15,339 +15,384 @@ const io = socketIo(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// Data storage in memory (will persist while server is running)
-let quests = [];
-let markers = [];
-let customCategories = ['design', 'programming', 'marketing', 'writing', 'other'];
-let connectedUsers = new Map(); // socket.id -> user info
-let adminSockets = new Set(); // socket ids that are admin
-
-// File for data persistence
-const DATA_FILE = path.join(__dirname, 'data.json');
-
-// Load data from file if exists
-function loadDataFromFile() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-      quests = data.quests || [];
-      markers = data.markers || [];
-      customCategories = data.customCategories || customCategories;
-      console.log('Data loaded from file:', {
-        quests: quests.length,
-        markers: markers.length,
-        categories: customCategories.length
-      });
-    }
-  } catch (error) {
-    console.error('Error loading data file:', error);
-  }
-}
-
-// Save data to file
-function saveDataToFile() {
-  try {
-    const data = {
-      quests,
-      markers,
-      customCategories,
-      lastUpdated: new Date().toISOString()
+// Data storage dengan auto-save yang lebih agresif
+class DataStore {
+  constructor() {
+    this.dataPath = path.join(__dirname, 'data.json');
+    this.data = {
+      quests: [],
+      markers: [],
+      customCategories: ['design', 'programming', 'marketing', 'writing', 'other'],
+      analytics: {
+        totalConnections: 0,
+        lastUpdated: new Date().toISOString()
+      }
     };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    console.log('Data saved to file');
-  } catch (error) {
-    console.error('Error saving data file:', error);
+    this.loadData();
+    
+    // Auto-save setiap 10 detik
+    setInterval(() => this.saveData(), 10000);
+    
+    // Auto-save juga setiap ada perubahan
+    this.autoSaveTimeout = null;
+  }
+  
+  loadData() {
+    try {
+      if (fs.existsSync(this.dataPath)) {
+        const rawData = fs.readFileSync(this.dataPath, 'utf8');
+        const savedData = JSON.parse(rawData);
+        
+        // Merge dengan data default
+        this.data.quests = savedData.quests || [];
+        this.data.markers = savedData.markers || [];
+        this.data.customCategories = savedData.customCategories || this.data.customCategories;
+        this.data.analytics = savedData.analytics || this.data.analytics;
+        
+        console.log(`📂 Data loaded: ${this.data.quests.length} quests, ${this.data.markers.length} markers`);
+      }
+    } catch (error) {
+      console.error('❌ Error loading data:', error);
+    }
+  }
+  
+  saveData() {
+    try {
+      this.data.analytics.lastUpdated = new Date().toISOString();
+      fs.writeFileSync(this.dataPath, JSON.stringify(this.data, null, 2));
+      console.log('💾 Data saved to file');
+    } catch (error) {
+      console.error('❌ Error saving data:', error);
+    }
+  }
+  
+  scheduleSave() {
+    if (this.autoSaveTimeout) {
+      clearTimeout(this.autoSaveTimeout);
+    }
+    this.autoSaveTimeout = setTimeout(() => this.saveData(), 1000);
+  }
+  
+  // Quest methods
+  addQuest(quest) {
+    quest.id = Date.now() + Math.random();
+    quest.createdAt = new Date().toISOString();
+    this.data.quests.unshift(quest);
+    this.scheduleSave();
+    return quest;
+  }
+  
+  updateQuest(id, updates) {
+    const quest = this.data.quests.find(q => q.id === id);
+    if (quest) {
+      Object.assign(quest, updates);
+      quest.updatedAt = new Date().toISOString();
+      this.scheduleSave();
+      return quest;
+    }
+    return null;
+  }
+  
+  deleteQuest(id) {
+    const index = this.data.quests.findIndex(q => q.id === id);
+    if (index !== -1) {
+      const deleted = this.data.quests.splice(index, 1)[0];
+      this.scheduleSave();
+      return deleted;
+    }
+    return null;
+  }
+  
+  // Marker methods
+  addMarker(marker) {
+    marker.id = Date.now() + Math.random();
+    marker.createdAt = new Date().toISOString();
+    this.data.markers.unshift(marker);
+    this.scheduleSave();
+    return marker;
+  }
+  
+  deleteMarker(id) {
+    const index = this.data.markers.findIndex(m => m.id === id);
+    if (index !== -1) {
+      const deleted = this.data.markers.splice(index, 1)[0];
+      this.scheduleSave();
+      return deleted;
+    }
+    return null;
+  }
+  
+  // Category methods
+  addCategory(name) {
+    if (!this.data.customCategories.includes(name)) {
+      this.data.customCategories.push(name);
+      this.scheduleSave();
+      return name;
+    }
+    return null;
+  }
+  
+  deleteCategory(name) {
+    const index = this.data.customCategories.indexOf(name);
+    if (index !== -1) {
+      const deleted = this.data.customCategories.splice(index, 1)[0];
+      this.scheduleSave();
+      return deleted;
+    }
+    return null;
+  }
+  
+  // Clear methods
+  clearAllQuests() {
+    this.data.quests = [];
+    this.scheduleSave();
+    return true;
+  }
+  
+  clearAllMarkers() {
+    this.data.markers = [];
+    this.scheduleSave();
+    return true;
+  }
+  
+  // Stats
+  getStats() {
+    const today = new Date().toDateString();
+    const markersToday = this.data.markers.filter(m => {
+      const markerDate = new Date(m.createdAt).toDateString();
+      return markerDate === today;
+    }).length;
+    
+    return {
+      totalQuests: this.data.quests.length,
+      totalMarkers: this.data.markers.length,
+      questsOpen: this.data.quests.filter(q => q.status === 'open').length,
+      questsTaken: this.data.quests.filter(q => q.status === 'taken').length,
+      activeUsers: new Set(this.data.quests.map(q => q.user)).size,
+      markersToday: markersToday,
+      customCategories: this.data.customCategories.length,
+      lastUpdated: this.data.analytics.lastUpdated
+    };
+  }
+  
+  // Get all data
+  getAllData() {
+    return {
+      quests: this.data.quests,
+      markers: this.data.markers,
+      customCategories: this.data.customCategories
+    };
   }
 }
 
-// Auto-save every 30 seconds
-setInterval(saveDataToFile, 30000);
+// Initialize data store
+const dataStore = new DataStore();
 
-// Load initial data
-loadDataFromFile();
+// User tracking
+const connectedUsers = new Map();
+const adminSockets = new Set();
 
-// Serve static files (HTML, CSS, JS)
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the HTML page
+// Serve HTML page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Admin route
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// API endpoints for backup
+// API endpoints
 app.get('/api/data', (req, res) => {
-  res.json({
-    quests,
-    markers,
-    customCategories,
-    connectedUsers: connectedUsers.size,
-    serverTime: new Date().toISOString()
-  });
+  res.json(dataStore.getAllData());
 });
 
 app.get('/api/stats', (req, res) => {
-  const today = new Date().toDateString();
-  const markersToday = markers.filter(m => {
-    const markerDate = new Date(m.createdAt || Date.now()).toDateString();
-    return markerDate === today;
-  }).length;
-  
-  res.json({
-    totalQuests: quests.length,
-    totalMarkers: markers.length,
-    questsOpen: quests.filter(q => q.status === 'open').length,
-    questsTaken: quests.filter(q => q.status === 'taken').length,
-    activeUsers: new Set(quests.map(q => q.user)).size,
-    markersToday: markersToday,
-    connectedUsers: connectedUsers.size,
-    onlineAdmins: adminSockets.size
-  });
+  res.json(dataStore.getStats());
 });
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('New user connected:', socket.id);
+  console.log('🔗 New connection:', socket.id);
   
-  // Add user to connected list
+  // Track user
   connectedUsers.set(socket.id, {
     id: socket.id,
     connectedAt: new Date().toISOString(),
-    isAdmin: false
+    userAgent: socket.handshake.headers['user-agent']
   });
   
-  // Check if user is admin (based on URL)
-  const isAdmin = socket.handshake.headers.referer?.includes('/admin') || 
+  dataStore.data.analytics.totalConnections++;
+  
+  // Check if admin
+  const isAdmin = socket.handshake.headers.referer?.includes('/admin') ||
                   socket.handshake.headers.referer?.includes('?admin=true') ||
                   socket.handshake.headers.referer?.includes('#admin');
   
   if (isAdmin) {
     adminSockets.add(socket.id);
-    const user = connectedUsers.get(socket.id);
-    if (user) user.isAdmin = true;
-    console.log('Admin connected:', socket.id);
+    console.log('🛡️  Admin connected:', socket.id);
   }
   
-  // Send initial data to new client
+  // Send initial data
   socket.emit('initialData', {
-    quests,
-    markers,
-    customCategories,
-    connectedUsers: Array.from(connectedUsers.values()),
-    isAdmin: isAdmin
+    ...dataStore.getAllData(),
+    isAdmin: isAdmin,
+    connectionId: socket.id
   });
   
-  // Broadcast user count to all
+  // Broadcast user count
   io.emit('userCount', connectedUsers.size);
   
   // Handle quest operations
   socket.on('addQuest', (questData) => {
-    const newQuest = {
-      id: Date.now() + Math.random(), // Unique ID
-      ...questData,
-      status: 'open',
-      createdAt: new Date().toISOString(),
-      socketId: socket.id
-    };
-    
-    quests.unshift(newQuest); // Add to beginning
-    console.log('Quest added:', newQuest.title);
-    
-    // Broadcast to all clients
-    io.emit('questAdded', newQuest);
-    
-    // Notify admins
-    adminSockets.forEach(adminId => {
-      io.to(adminId).emit('adminNotification', {
-        type: 'quest_added',
-        message: `Quest baru: ${newQuest.title}`,
-        quest: newQuest
+    try {
+      const newQuest = dataStore.addQuest(questData);
+      console.log('➕ Quest added:', newQuest.title);
+      
+      // Broadcast to all clients
+      io.emit('questAdded', newQuest);
+      
+      // Notify admins
+      adminSockets.forEach(adminId => {
+        io.to(adminId).emit('adminNotification', {
+          type: 'quest_added',
+          message: `Quest baru: "${newQuest.title}"`,
+          data: newQuest,
+          timestamp: new Date().toISOString()
+        });
       });
-    });
-    
-    // Auto-save
-    saveDataToFile();
+    } catch (error) {
+      console.error('Error adding quest:', error);
+      socket.emit('error', { message: 'Failed to add quest' });
+    }
   });
   
   socket.on('updateQuest', ({ id, status }) => {
-    const questIndex = quests.findIndex(q => q.id === id);
-    if (questIndex !== -1) {
-      quests[questIndex].status = status;
-      quests[questIndex].updatedAt = new Date().toISOString();
-      
-      console.log('Quest updated:', quests[questIndex].title, '->', status);
-      
-      // Broadcast to all clients
-      io.emit('questUpdated', quests[questIndex]);
-      
-      // Auto-save
-      saveDataToFile();
+    try {
+      const updatedQuest = dataStore.updateQuest(id, { status });
+      if (updatedQuest) {
+        console.log('✏️ Quest updated:', updatedQuest.title, '->', status);
+        io.emit('questUpdated', updatedQuest);
+      }
+    } catch (error) {
+      console.error('Error updating quest:', error);
     }
   });
   
   socket.on('deleteQuest', (questId) => {
-    const questIndex = quests.findIndex(q => q.id === questId);
-    if (questIndex !== -1) {
-      const deletedQuest = quests.splice(questIndex, 1)[0];
-      console.log('Quest deleted:', deletedQuest.title);
-      
-      // Broadcast to all clients
-      io.emit('questDeleted', questId);
-      
-      // Auto-save
-      saveDataToFile();
+    try {
+      const deletedQuest = dataStore.deleteQuest(questId);
+      if (deletedQuest) {
+        console.log('🗑️ Quest deleted:', deletedQuest.title);
+        io.emit('questDeleted', questId);
+      }
+    } catch (error) {
+      console.error('Error deleting quest:', error);
     }
   });
   
   // Handle marker operations
   socket.on('addMarker', (markerData) => {
-    const newMarker = {
-      id: Date.now() + Math.random(), // Unique ID
-      ...markerData,
-      createdAt: new Date().toISOString(),
-      socketId: socket.id
-    };
-    
-    markers.unshift(newMarker); // Add to beginning
-    console.log('Marker added:', newMarker.title);
-    
-    // Broadcast to all clients
-    io.emit('markerAdded', newMarker);
-    
-    // Notify admins
-    adminSockets.forEach(adminId => {
-      io.to(adminId).emit('adminNotification', {
-        type: 'marker_added',
-        message: `Marker baru: ${newMarker.title}`,
-        marker: newMarker
+    try {
+      const newMarker = dataStore.addMarker(markerData);
+      console.log('📍 Marker added:', newMarker.title);
+      
+      io.emit('markerAdded', newMarker);
+      
+      adminSockets.forEach(adminId => {
+        io.to(adminId).emit('adminNotification', {
+          type: 'marker_added',
+          message: `Marker baru: "${newMarker.title}"`,
+          data: newMarker,
+          timestamp: new Date().toISOString()
+        });
       });
-    });
-    
-    // Auto-save
-    saveDataToFile();
+    } catch (error) {
+      console.error('Error adding marker:', error);
+    }
   });
   
   socket.on('deleteMarker', (markerId) => {
-    const markerIndex = markers.findIndex(m => m.id === markerId);
-    if (markerIndex !== -1) {
-      const deletedMarker = markers.splice(markerIndex, 1)[0];
-      console.log('Marker deleted:', deletedMarker.title);
-      
-      // Broadcast to all clients
-      io.emit('markerDeleted', markerId);
-      
-      // Auto-save
-      saveDataToFile();
+    try {
+      const deletedMarker = dataStore.deleteMarker(markerId);
+      if (deletedMarker) {
+        console.log('🗑️ Marker deleted:', deletedMarker.title);
+        io.emit('markerDeleted', markerId);
+      }
+    } catch (error) {
+      console.error('Error deleting marker:', error);
+    }
+  });
+  
+  // Clear all operations
+  socket.on('clearAllQuests', () => {
+    try {
+      dataStore.clearAllQuests();
+      console.log('🔥 All quests cleared');
+      io.emit('allQuestsCleared');
+    } catch (error) {
+      console.error('Error clearing quests:', error);
     }
   });
   
   socket.on('clearAllMarkers', () => {
-    markers = [];
-    console.log('All markers cleared by admin');
-    
-    // Broadcast to all clients
-    io.emit('allMarkersCleared');
-    
-    // Auto-save
-    saveDataToFile();
+    try {
+      dataStore.clearAllMarkers();
+      console.log('🔥 All markers cleared');
+      io.emit('allMarkersCleared');
+    } catch (error) {
+      console.error('Error clearing markers:', error);
+    }
   });
   
-  socket.on('clearAllQuests', () => {
-    quests = [];
-    console.log('All quests cleared by admin');
-    
-    // Broadcast to all clients
-    io.emit('allQuestsCleared');
-    
-    // Auto-save
-    saveDataToFile();
-  });
-  
-  // Handle category operations
+  // Category operations
   socket.on('addCategory', (categoryName) => {
-    if (!customCategories.includes(categoryName)) {
-      customCategories.push(categoryName);
-      console.log('Category added:', categoryName);
-      
-      // Broadcast to all clients
-      io.emit('categoryAdded', categoryName);
-      
-      // Auto-save
-      saveDataToFile();
+    try {
+      const added = dataStore.addCategory(categoryName);
+      if (added) {
+        console.log('🏷️ Category added:', categoryName);
+        io.emit('categoryAdded', categoryName);
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
     }
   });
   
   socket.on('deleteCategory', (categoryName) => {
-    const index = customCategories.indexOf(categoryName);
-    if (index !== -1) {
-      customCategories.splice(index, 1);
-      console.log('Category deleted:', categoryName);
-      
-      // Broadcast to all clients
-      io.emit('categoryDeleted', categoryName);
-      
-      // Auto-save
-      saveDataToFile();
+    try {
+      const deleted = dataStore.deleteCategory(categoryName);
+      if (deleted) {
+        console.log('🗑️ Category deleted:', categoryName);
+        io.emit('categoryDeleted', categoryName);
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
     }
   });
   
-  // Admin operations
+  // Admin stats
   socket.on('getAdminStats', () => {
-    const today = new Date().toDateString();
-    const markersToday = markers.filter(m => {
-      const markerDate = new Date(m.createdAt || Date.now()).toDateString();
-      return markerDate === today;
-    }).length;
-    
-    const stats = {
-      totalQuests: quests.length,
-      totalMarkers: markers.length,
-      questsOpen: quests.filter(q => q.status === 'open').length,
-      questsTaken: quests.filter(q => q.status === 'taken').length,
-      activeUsers: new Set(quests.map(q => q.user)).size,
-      markersToday: markersToday,
+    const stats = dataStore.getStats();
+    socket.emit('adminStats', {
+      ...stats,
       connectedUsers: connectedUsers.size,
-      customCategories: customCategories.length,
-      serverUptime: process.uptime(),
-      serverTime: new Date().toISOString()
-    };
-    
-    socket.emit('adminStats', stats);
+      adminCount: adminSockets.size
+    });
   });
   
-  // Chat message
-  socket.on('sendChatMessage', (messageData) => {
-    const message = {
-      id: Date.now(),
-      ...messageData,
-      timestamp: new Date().toISOString(),
-      socketId: socket.id
-    };
-    
-    // Broadcast to all clients
-    io.emit('newChatMessage', message);
-  });
-  
-  // User typing
-  socket.on('userTyping', (username) => {
-    socket.broadcast.emit('userTyping', { username, socketId: socket.id });
-  });
-  
-  socket.on('userStoppedTyping', () => {
-    socket.broadcast.emit('userStoppedTyping', socket.id);
+  // Ping/pong for connection monitoring
+  socket.on('ping', () => {
+    socket.emit('pong', { timestamp: new Date().toISOString() });
   });
   
   // Disconnect
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('🔌 User disconnected:', socket.id);
     connectedUsers.delete(socket.id);
     adminSockets.delete(socket.id);
-    
-    // Broadcast updated user count
     io.emit('userCount', connectedUsers.size);
   });
 });
@@ -356,20 +401,16 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(`
   ============================================
-  SIMPLE BISNIS - CYBER NETWORK REAL-TIME
+  🚀 SIMPLE BISNIS REAL-TIME SERVER
   ============================================
-  Server running on port: ${PORT}
+  Port: ${PORT}
+  Local: http://localhost:${PORT}
+  Admin: http://localhost:${PORT}/admin
   
-  Local:  http://localhost:${PORT}
-  Admin:  http://localhost:${PORT}/admin
-  Stats:  http://localhost:${PORT}/api/stats
-  
-  FEATURES:
-  ✅ Real-time dengan Socket.io
-  ✅ Data tidak hilang saat refresh server
-  ✅ Semua user lihat perubahan langsung
-  ✅ Admin bisa kontrol dari mana saja
-  ✅ Auto-save ke file setiap 30 detik
+  ✅ Data persistence: ENABLED
+  ✅ Auto-save: EVERY 10 SECONDS
+  ✅ Real-time: SOCKET.IO
+  ✅ Multi-user: UNLIMITED
   ============================================
   `);
 });
