@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* -------------------------------------------------------------------
-        CYBER-NETWORK THEME CSS - TIDAK ADA YANG DIUBAH
+        CYBER-NETWORK THEME CSS - SEMUA CSS ASLI ANDA
         ------------------------------------------------------------------- */
         
         /* CSS Reset & Variables */
@@ -794,49 +794,98 @@
             .admin-controls { grid-template-columns: 1fr; }
         }
 
-        /* Real-time notification styles */
-        .real-time-notification {
+        /* Real-time UI Elements */
+        .connection-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,240,255,0.3);
+        }
+        
+        .connection-status.connected {
+            color: #00ff88;
+        }
+        
+        .connection-status.disconnected {
+            color: #ff2a6d;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .connection-status.reconnecting {
+            color: #ffcc00;
+            animation: pulse 1s infinite;
+        }
+        
+        .realtime-notification {
             position: fixed;
             top: 80px;
             right: 20px;
             background: var(--primary);
             color: var(--darker);
-            padding: 10px 15px;
-            border-radius: 5px;
+            padding: 12px 16px;
+            border-radius: 8px;
             z-index: 9999;
-            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
             max-width: 300px;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+            box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4);
             font-weight: bold;
-        }
-
-        .connection-status {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.8rem;
-            z-index: 1000;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 10px;
+            border: 1px solid rgba(0,240,255,0.5);
         }
-
-        .connection-status.connected {
-            color: var(--success);
+        
+        .realtime-notification.success {
+            background: var(--success);
+            color: black;
         }
-
-        .connection-status.disconnected {
-            color: var(--danger);
+        
+        .realtime-notification.error {
+            background: var(--danger);
+            color: white;
         }
-
-        @keyframes slideInRight {
+        
+        .realtime-notification.warning {
+            background: var(--warning);
+            color: black;
+        }
+        
+        .realtime-notification.info {
+            background: var(--primary);
+            color: var(--darker);
+        }
+        
+        .user-count {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,240,255,0.3);
+            color: var(--primary);
+        }
+        
+        @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-
+        
         @keyframes fadeOut {
             from { opacity: 1; }
             to { opacity: 0; }
@@ -1249,573 +1298,323 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // ==================== SOCKET.IO REAL-TIME ====================
-        const socket = io();
+        // ==================== REAL-TIME MANAGER ====================
+        class RealtimeManager {
+            constructor() {
+                this.socket = null;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 10;
+                this.reconnectDelay = 1000;
+                this.isConnected = false;
+                this.connectionId = null;
+                
+                // Data storage
+                this.quests = [];
+                this.markers = [];
+                this.customCategories = ['design', 'programming', 'marketing', 'writing', 'other'];
+                this.connectedUsers = 0;
+                this.isAdmin = false;
+                
+                this.init();
+            }
+            
+            init() {
+                this.createConnectionUI();
+                this.connect();
+                this.setupEventListeners();
+            }
+            
+            createConnectionUI() {
+                // Connection status
+                const statusDiv = document.createElement('div');
+                statusDiv.id = 'connectionStatus';
+                statusDiv.className = 'connection-status disconnected';
+                statusDiv.innerHTML = `
+                    <i class="fas fa-plug"></i>
+                    <span>Connecting...</span>
+                `;
+                document.body.appendChild(statusDiv);
+                
+                // User count
+                const userCountDiv = document.createElement('div');
+                userCountDiv.id = 'userCount';
+                userCountDiv.className = 'user-count';
+                userCountDiv.innerHTML = `
+                    <i class="fas fa-users"></i>
+                    <span>0 online</span>
+                `;
+                document.body.appendChild(userCountDiv);
+            }
+            
+            connect() {
+                console.log('🔗 Connecting to server...');
+                this.updateStatus('Connecting...', 'reconnecting');
+                
+                this.socket = io({
+                    reconnection: true,
+                    reconnectionAttempts: this.maxReconnectAttempts,
+                    reconnectionDelay: this.reconnectDelay,
+                    reconnectionDelayMax: 5000,
+                    timeout: 20000
+                });
+                
+                this.setupSocketEvents();
+            }
+            
+            setupSocketEvents() {
+                // Connection events
+                this.socket.on('connect', () => {
+                    console.log('✅ Connected to server with ID:', this.socket.id);
+                    this.isConnected = true;
+                    this.connectionId = this.socket.id;
+                    this.reconnectAttempts = 0;
+                    this.updateStatus('Connected', 'connected');
+                    this.showNotification('Connected to server', 'success');
+                    
+                    // Request initial data
+                    this.socket.emit('getInitialData');
+                });
+                
+                this.socket.on('disconnect', (reason) => {
+                    console.log('❌ Disconnected:', reason);
+                    this.isConnected = false;
+                    this.updateStatus('Disconnected', 'disconnected');
+                    
+                    if (reason === 'io server disconnect') {
+                        // Server initiated disconnect, need to manually reconnect
+                        this.showNotification('Disconnected from server', 'error');
+                        setTimeout(() => this.connect(), 1000);
+                    }
+                });
+                
+                this.socket.on('connect_error', (error) => {
+                    console.error('🔥 Connection error:', error.message);
+                    this.updateStatus('Connection error', 'disconnected');
+                    this.reconnectAttempts++;
+                    
+                    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                        this.showNotification('Cannot connect to server. Please refresh page.', 'error');
+                    }
+                });
+                
+                // Initial data
+                this.socket.on('initialData', (data) => {
+                    console.log('📦 Received initial data:', data);
+                    this.quests = data.quests || [];
+                    this.markers = data.markers || [];
+                    this.customCategories = data.customCategories || this.customCategories;
+                    this.isAdmin = data.isAdmin || false;
+                    
+                    // Update UI
+                    renderQuests();
+                    renderMarkerList();
+                    addMarkersToMap();
+                    
+                    if (this.isAdmin) {
+                        loadAdminDashboard();
+                    }
+                    
+                    this.showNotification('Data synchronized', 'success');
+                });
+                
+                // Quest events
+                this.socket.on('questAdded', (newQuest) => {
+                    console.log('➕ Quest added:', newQuest);
+                    this.quests.unshift(newQuest);
+                    renderQuests();
+                    this.showNotification(`New quest: ${newQuest.title}`, 'info');
+                });
+                
+                this.socket.on('questUpdated', (updatedQuest) => {
+                    console.log('✏️ Quest updated:', updatedQuest);
+                    const index = this.quests.findIndex(q => q.id === updatedQuest.id);
+                    if (index !== -1) {
+                        this.quests[index] = updatedQuest;
+                        renderQuests();
+                    }
+                });
+                
+                this.socket.on('questDeleted', (questId) => {
+                    console.log('🗑️ Quest deleted:', questId);
+                    this.quests = this.quests.filter(q => q.id !== questId);
+                    renderQuests();
+                    this.showNotification('Quest deleted', 'warning');
+                });
+                
+                this.socket.on('allQuestsCleared', () => {
+                    console.log('🔥 All quests cleared');
+                    this.quests = [];
+                    renderQuests();
+                    this.showNotification('All quests cleared by admin', 'warning');
+                });
+                
+                // Marker events
+                this.socket.on('markerAdded', (newMarker) => {
+                    console.log('📍 Marker added:', newMarker);
+                    this.markers.unshift(newMarker);
+                    addMarkerToMap(newMarker);
+                    renderMarkerList();
+                    this.showNotification(`New marker: ${newMarker.title}`, 'info');
+                });
+                
+                this.socket.on('markerDeleted', (markerId) => {
+                    console.log('🗑️ Marker deleted:', markerId);
+                    this.markers = this.markers.filter(m => m.id !== markerId);
+                    removeMarkerFromMap(markerId);
+                    renderMarkerList();
+                    this.showNotification('Marker deleted', 'warning');
+                });
+                
+                this.socket.on('allMarkersCleared', () => {
+                    console.log('🔥 All markers cleared');
+                    this.markers = [];
+                    markerLayerGroup.clearLayers();
+                    renderMarkerList();
+                    this.showNotification('All markers cleared by admin', 'warning');
+                });
+                
+                // Category events
+                this.socket.on('categoryAdded', (categoryName) => {
+                    console.log('🏷️ Category added:', categoryName);
+                    if (!this.customCategories.includes(categoryName)) {
+                        this.customCategories.push(categoryName);
+                    }
+                    this.showNotification(`New category: ${categoryName}`, 'info');
+                });
+                
+                this.socket.on('categoryDeleted', (categoryName) => {
+                    console.log('🗑️ Category deleted:', categoryName);
+                    const index = this.customCategories.indexOf(categoryName);
+                    if (index !== -1) {
+                        this.customCategories.splice(index, 1);
+                    }
+                    this.showNotification(`Category deleted: ${categoryName}`, 'warning');
+                });
+                
+                // User count
+                this.socket.on('userCount', (count) => {
+                    console.log('👥 Users online:', count);
+                    this.connectedUsers = count;
+                    this.updateUserCount(count);
+                });
+                
+                // Admin stats
+                this.socket.on('adminStats', (stats) => {
+                    console.log('📊 Admin stats:', stats);
+                    updateAdminStats(stats);
+                });
+                
+                // Admin notifications
+                this.socket.on('adminNotification', (notification) => {
+                    console.log('🔔 Admin notification:', notification);
+                    if (this.isAdmin) {
+                        this.showNotification(notification.message, 'info');
+                    }
+                });
+                
+                // Ping/pong for connection health
+                this.socket.on('pong', (data) => {
+                    console.log('🏓 Pong received:', data.timestamp);
+                });
+                
+                // Send ping every 30 seconds
+                setInterval(() => {
+                    if (this.isConnected) {
+                        this.socket.emit('ping');
+                    }
+                }, 30000);
+            }
+            
+            updateStatus(message, status) {
+                const statusEl = document.getElementById('connectionStatus');
+                if (statusEl) {
+                    statusEl.className = `connection-status ${status}`;
+                    statusEl.innerHTML = `
+                        <i class="fas fa-${status === 'connected' ? 'wifi' : 'plug-circle-exclamation'}"></i>
+                        <span>${message}</span>
+                    `;
+                }
+            }
+            
+            updateUserCount(count) {
+                const countEl = document.getElementById('userCount');
+                if (countEl) {
+                    countEl.innerHTML = `
+                        <i class="fas fa-users"></i>
+                        <span>${count} online</span>
+                    `;
+                }
+            }
+            
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `realtime-notification ${type}`;
+                
+                let icon = 'fas fa-info-circle';
+                if (type === 'success') icon = 'fas fa-check-circle';
+                if (type === 'error') icon = 'fas fa-exclamation-circle';
+                if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+                if (type === 'info') icon = 'fas fa-bell';
+                
+                notification.innerHTML = `
+                    <i class="${icon}"></i>
+                    <span>${message}</span>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 3000);
+            }
+            
+            emit(event, data) {
+                if (this.isConnected && this.socket) {
+                    this.socket.emit(event, data);
+                } else {
+                    this.showNotification('Not connected to server', 'error');
+                }
+            }
+            
+            setupEventListeners() {
+                // Auto-reconnect on visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible' && !this.isConnected) {
+                        this.connect();
+                    }
+                });
+                
+                // Try reconnect on click if disconnected
+                document.addEventListener('click', () => {
+                    if (!this.isConnected && this.reconnectAttempts < this.maxReconnectAttempts) {
+                        this.connect();
+                    }
+                });
+            }
+            
+            // Public methods for data access
+            getQuests() { return this.quests; }
+            getMarkers() { return this.markers; }
+            getCategories() { return this.customCategories; }
+            getIsAdmin() { return this.isAdmin; }
+            getIsConnected() { return this.isConnected; }
+        }
         
         // ==================== GLOBAL VARIABLES ====================
+        const realtime = new RealtimeManager();
         let map, currentMarker = null;
         let selectedCategory = 'traffic';
         let currentQuestId = null;
         let currentQuestFilter = 'all';
         let currentQuestSearch = '';
-        let markers = []; 
-        let markerLayerGroup = L.layerGroup(); 
+        let markerLayerGroup = L.layerGroup();
         let currentMapFilter = 'all';
         let selectedModel = 'dex75';
-        let customCategories = ['design', 'programming', 'marketing', 'writing', 'other'];
-        let quests = [];
-        let isAdmin = false;
-        let mapMarkers = {}; // Store map markers by ID
+        let mapMarkers = {};
         
-        // ==================== SOCKET.IO EVENT HANDLERS ====================
-        
-        socket.on('connect', () => {
-            console.log('✅ Connected to server');
-            updateConnectionStatus(true);
-            showRealTimeNotification('Connected to server', 'success');
-        });
-        
-        socket.on('disconnect', () => {
-            console.log('❌ Disconnected from server');
-            updateConnectionStatus(false);
-            showRealTimeNotification('Disconnected from server', 'error');
-        });
-        
-        socket.on('initialData', (data) => {
-            console.log('📦 Received initial data from server:', data);
-            quests = data.quests || [];
-            markers = data.markers || [];
-            customCategories = data.customCategories || customCategories;
-            isAdmin = data.isAdmin || false;
-            
-            // Render semua data
-            renderQuests();
-            renderMarkerList();
-            addMarkersToMap();
-            
-            // Jika admin, update stats
-            if (isAdmin) {
-                loadAdminDashboard();
-            }
-            
-            showRealTimeNotification('Data loaded successfully', 'success');
-        });
-        
-        socket.on('questAdded', (newQuest) => {
-            console.log('➕ New quest added:', newQuest);
-            quests.unshift(newQuest);
-            renderQuests();
-            showRealTimeNotification(`New quest: ${newQuest.title}`, 'info');
-        });
-        
-        socket.on('questUpdated', (updatedQuest) => {
-            console.log('✏️ Quest updated:', updatedQuest);
-            const index = quests.findIndex(q => q.id === updatedQuest.id);
-            if (index !== -1) {
-                quests[index] = updatedQuest;
-                renderQuests();
-            }
-        });
-        
-        socket.on('questDeleted', (questId) => {
-            console.log('🗑️ Quest deleted:', questId);
-            quests = quests.filter(q => q.id !== questId);
-            renderQuests();
-            showRealTimeNotification('Quest deleted', 'warning');
-        });
-        
-        socket.on('allQuestsCleared', () => {
-            console.log('🔥 All quests cleared');
-            quests = [];
-            renderQuests();
-            showRealTimeNotification('All quests cleared by admin', 'warning');
-        });
-        
-        socket.on('markerAdded', (newMarker) => {
-            console.log('📍 New marker added:', newMarker);
-            markers.unshift(newMarker);
-            addMarkerToMap(newMarker);
-            renderMarkerList();
-            showRealTimeNotification(`New marker: ${newMarker.title}`, 'info');
-        });
-        
-        socket.on('markerDeleted', (markerId) => {
-            console.log('🗑️ Marker deleted:', markerId);
-            markers = markers.filter(m => m.id !== markerId);
-            removeMarkerFromMap(markerId);
-            renderMarkerList();
-            showRealTimeNotification('Marker deleted', 'warning');
-        });
-        
-        socket.on('allMarkersCleared', () => {
-            console.log('🔥 All markers cleared');
-            markers = [];
-            markerLayerGroup.clearLayers();
-            renderMarkerList();
-            showRealTimeNotification('All markers cleared by admin', 'warning');
-        });
-        
-        socket.on('categoryAdded', (categoryName) => {
-            console.log('🏷️ New category:', categoryName);
-            if (!customCategories.includes(categoryName)) {
-                customCategories.push(categoryName);
-            }
-            showRealTimeNotification(`New category: ${categoryName}`, 'info');
-        });
-        
-        socket.on('categoryDeleted', (categoryName) => {
-            console.log('🗑️ Category deleted:', categoryName);
-            const index = customCategories.indexOf(categoryName);
-            if (index !== -1) {
-                customCategories.splice(index, 1);
-            }
-            showRealTimeNotification(`Category deleted: ${categoryName}`, 'warning');
-        });
-        
-        socket.on('adminStats', (stats) => {
-            console.log('📊 Admin stats:', stats);
-            updateAdminStats(stats);
-        });
-        
-        socket.on('userCount', (count) => {
-            console.log('👥 Users online:', count);
-            updateUserCount(count);
-        });
-        
-        socket.on('adminNotification', (notification) => {
-            console.log('🔔 Admin notification:', notification);
-            showRealTimeNotification(notification.message, 'admin');
-        });
-        
-        // ==================== REAL-TIME FUNCTIONS ====================
-        
-        function showRealTimeNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = 'real-time-notification';
-            
-            let icon = 'fas fa-info-circle';
-            if (type === 'success') icon = 'fas fa-check-circle';
-            if (type === 'error') icon = 'fas fa-exclamation-circle';
-            if (type === 'warning') icon = 'fas fa-exclamation-triangle';
-            if (type === 'admin') icon = 'fas fa-user-shield';
-            
-            notification.innerHTML = `
-                <i class="${icon}" style="margin-right: 8px;"></i>
-                ${message}
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 3000);
-        }
-        
-        function updateConnectionStatus(connected) {
-            let statusEl = document.getElementById('connectionStatus');
-            if (!statusEl) {
-                statusEl = document.createElement('div');
-                statusEl.id = 'connectionStatus';
-                statusEl.className = 'connection-status';
-                document.body.appendChild(statusEl);
-            }
-            
-            statusEl.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
-            statusEl.innerHTML = `
-                <i class="fas fa-${connected ? 'wifi' : 'plug-circle-exclamation'}"></i>
-                ${connected ? 'Connected' : 'Disconnected'}
-            `;
-        }
-        
-        function updateUserCount(count) {
-            const countEl = document.getElementById('userCount');
-            if (!countEl) {
-                const header = document.querySelector('.header-content');
-                if (header) {
-                    const countDiv = document.createElement('div');
-                    countDiv.id = 'userCount';
-                    countDiv.style.cssText = `
-                        background: rgba(0, 240, 255, 0.2);
-                        padding: 5px 10px;
-                        border-radius: 5px;
-                        font-size: 0.8rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 5px;
-                    `;
-                    header.appendChild(countDiv);
-                }
-            }
-            
-            if (countEl) {
-                countEl.innerHTML = `
-                    <i class="fas fa-users"></i>
-                    ${count} Online
-                `;
-            }
-        }
-        
-        // ==================== MODIFIED FUNCTIONS FOR REAL-TIME ====================
-        
-        function submitQuest() {
-            const user = document.getElementById('qUser').value.trim();
-            const title = document.getElementById('qTitle').value.trim();
-            const desc = document.getElementById('qDesc').value.trim();
-            const contact = document.getElementById('qContact').value.trim();
-            const category = document.getElementById('qCategory').value;
-            
-            if(!user || !title || !contact || !desc) {
-                alert("Mohon lengkapi semua data!");
-                return;
-            }
-            
-            const questData = {
-                user,
-                title,
-                description: desc,
-                contact,
-                category,
-                status: 'open'
-            };
-            
-            // Send to server via socket
-            socket.emit('addQuest', questData);
-            
-            closeModal('modalPostQuest');
-            
-            // Clear form
-            document.getElementById('qUser').value = '';
-            document.getElementById('qTitle').value = '';
-            document.getElementById('qDesc').value = '';
-            document.getElementById('qContact').value = '';
-        }
-        
-        function addMarker() {
-            const title = document.getElementById('markerTitle').value;
-            const desc = document.getElementById('markerDesc').value;
-            if(!title) {
-                alert("Judul marker harus diisi!");
-                return;
-            }
-            if(!currentMarker) {
-                alert("Klik peta lokasi dulu!");
-                return;
-            }
-            
-            const latlng = currentMarker.getLatLng();
-            
-            const markerData = {
-                title,
-                description: desc,
-                category: selectedCategory,
-                lat: latlng.lat,
-                lng: latlng.lng,
-                user: 'Anonymous'
-            };
-            
-            // Send to server via socket
-            socket.emit('addMarker', markerData);
-            
-            // Clear form
-            map.removeLayer(currentMarker);
-            currentMarker = null;
-            document.getElementById('markerTitle').value = '';
-            document.getElementById('markerDesc').value = '';
-            document.getElementById('btnAddMarker').disabled = true;
-        }
-        
-        function takeOrder() {
-            const q = quests.find(x => x.id === currentQuestId);
-            if(q && q.status === 'open') {
-                socket.emit('updateQuest', { id: q.id, status: 'taken' });
-                closeModal('modalQuestDetail');
-                alert(`Order "${q.title}" berhasil diambil! Silakan hubungi ${q.user}.`);
-            }
-        }
-        
-        // ==================== ADMIN FUNCTIONS FOR REAL-TIME ====================
-        
-        function loadAdminDashboard() {
-            socket.emit('getAdminStats');
-            loadAdminQuestList();
-            loadAdminMarkerList();
-            loadAdminCategoryList();
-            getVisitorInfo();
-        }
-        
-        function updateAdminStats(stats) {
-            document.getElementById('totalQuests').textContent = stats.totalQuests || 0;
-            document.getElementById('totalMarkers').textContent = stats.totalMarkers || 0;
-            document.getElementById('questsOpen').textContent = stats.questsOpen || 0;
-            document.getElementById('questsTaken').textContent = stats.questsTaken || 0;
-            document.getElementById('activeUsers').textContent = stats.activeUsers || 0;
-            document.getElementById('markersToday').textContent = stats.markersToday || 0;
-        }
-        
-        function loadAdminQuestList() {
-            const container = document.getElementById('adminQuestList');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            quests.forEach(quest => {
-                const item = document.createElement('div');
-                item.className = 'admin-list-item';
-                item.innerHTML = `
-                    <div>
-                        <strong>${quest.title}</strong>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                            By: ${quest.user} | Status: <span style="color: ${quest.status === 'open' ? 'var(--success)' : 'var(--warning)'}">${quest.status}</span>
-                        </div>
-                        <span class="category-badge">${quest.category}</span>
-                    </div>
-                    <div class="item-actions">
-                        <button class="cyber-button btn-small btn-danger" onclick="deleteQuest(${quest.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
-        
-        function loadAdminMarkerList() {
-            const container = document.getElementById('adminMarkerList');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            markers.forEach(marker => {
-                const item = document.createElement('div');
-                item.className = 'admin-list-item';
-                item.innerHTML = `
-                    <div>
-                        <strong>${marker.title}</strong>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                            ${marker.description.substring(0, 50)}${marker.description.length > 50 ? '...' : ''}
-                        </div>
-                        <span class="category-badge">${marker.category}</span>
-                    </div>
-                    <div class="item-actions">
-                        <button class="cyber-button btn-small btn-danger" onclick="deleteMarker(${marker.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
-        
-        function loadAdminCategoryList() {
-            const container = document.getElementById('adminCategoryList');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            customCategories.forEach((category, index) => {
-                const item = document.createElement('div');
-                item.className = 'admin-list-item';
-                item.innerHTML = `
-                    <div>
-                        <strong>${category}</strong>
-                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
-                            Custom Category
-                        </div>
-                    </div>
-                    <div class="item-actions">
-                        <button class="cyber-button btn-small btn-danger" onclick="deleteCategory('${category}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
-        
-        function deleteQuest(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus quest ini?')) {
-                socket.emit('deleteQuest', id);
-            }
-        }
-        
-        function deleteMarker(id) {
-            if (confirm('Apakah Anda yakin ingin menghapus marker ini?')) {
-                socket.emit('deleteMarker', id);
-            }
-        }
-        
-        function deleteCategory(categoryName) {
-            if (confirm(`Apakah Anda yakin ingin menghapus kategori "${categoryName}"?`)) {
-                socket.emit('deleteCategory', categoryName);
-            }
-        }
-        
-        function addNewCategory() {
-            const newCategory = document.getElementById('newCategoryName').value.trim();
-            if (!newCategory) {
-                alert('Nama kategori tidak boleh kosong!');
-                return;
-            }
-            
-            if (customCategories.includes(newCategory)) {
-                alert('Kategori sudah ada!');
-                return;
-            }
-            
-            socket.emit('addCategory', newCategory);
-            document.getElementById('newCategoryName').value = '';
-        }
-        
-        function clearAllMarkers() {
-            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA markers? Aksi ini TIDAK dapat dibatalkan!')) {
-                socket.emit('clearAllMarkers');
-            }
-        }
-        
-        function clearAllQuests() {
-            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA quests? Aksi ini TIDAK dapat dibatalkan!')) {
-                socket.emit('clearAllQuests');
-            }
-        }
-        
-        function clearAllData() {
-            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA data? Aksi ini TIDAK dapat dibatalkan!')) {
-                socket.emit('clearAllMarkers');
-                socket.emit('clearAllQuests');
-                alert('Semua data akan dihapus...');
-            }
-        }
-        
-        // ==================== MAP FUNCTIONS ====================
-        
-        function initMap() {
-            map = L.map('map').setView([-6.200000, 106.816666], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(map);
-            markerLayerGroup.addTo(map);
-            
-            map.on('click', function(e) {
-                if(currentMarker) map.removeLayer(currentMarker);
-                currentMarker = L.marker(e.latlng).addTo(map);
-                document.getElementById('btnAddMarker').disabled = false;
-                
-                const panel = document.getElementById('mapPanel');
-                if(window.innerWidth <= 768 && panel.classList.contains('hidden-panel')) {
-                    toggleMapPanel();
-                }
-            });
-        }
-        
-        function addMarkersToMap() {
-            markers.forEach(markerData => {
-                addMarkerToMap(markerData);
-            });
-        }
-        
-        function addMarkerToMap(markerData) {
-            const marker = L.marker([markerData.lat, markerData.lng]).addTo(markerLayerGroup);
-            marker.bindPopup(`
-                <b>${markerData.title}</b><br>
-                ${markerData.description}<br>
-                <i>Category: ${markerData.category}</i>
-            `);
-            
-            // Store reference
-            mapMarkers[markerData.id] = marker;
-        }
-        
-        function removeMarkerFromMap(markerId) {
-            if (mapMarkers[markerId]) {
-                markerLayerGroup.removeLayer(mapMarkers[markerId]);
-                delete mapMarkers[markerId];
-            }
-        }
-        
-        // ==================== RENDER FUNCTIONS ====================
-        
-        function renderQuests() {
-            const container = document.getElementById('questListContainer');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            let filteredQuests = quests;
-            
-            if (currentQuestFilter !== 'all') {
-                filteredQuests = filteredQuests.filter(q => q.category === currentQuestFilter);
-            }
-            
-            if (currentQuestSearch) {
-                filteredQuests = filteredQuests.filter(q => 
-                    q.title.toLowerCase().includes(currentQuestSearch) || 
-                    q.description.toLowerCase().includes(currentQuestSearch) ||
-                    q.user.toLowerCase().includes(currentQuestSearch)
-                );
-            }
-            
-            if (filteredQuests.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Tidak ada quest yang cocok.</div>';
-                return;
-            }
-            
-            filteredQuests.forEach(q => {
-                const item = document.createElement('div');
-                item.className = 'quest-item';
-                const statusClass = q.status === 'open' ? 'status-open' : 'status-taken';
-                const statusText = q.status === 'open' ? 'OPEN' : 'TAKEN';
-                item.innerHTML = `
-                    <span class="quest-status ${statusClass}">${statusText}</span>
-                    <h4>${q.title}</h4>
-                    <p style="font-size: 0.9rem; color: #aaa;">${q.description.substring(0, 80)}${q.description.length > 80 ? '...' : ''}</p>
-                    <div style="margin-top:0.5rem; display: flex; justify-content: space-between; font-size:0.8rem;">
-                        <span style="color: var(--primary);"><i class="fas fa-user"></i> ${q.user}</span>
-                        <span style="color: var(--text-secondary);"><i class="fas fa-tag"></i> ${q.category.toUpperCase()}</span>
-                    </div>`;
-                item.onclick = () => openQuestDetail(q);
-                container.appendChild(item);
-            });
-        }
-        
-        function renderMarkerList() {
-            const container = document.getElementById('markerList');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            const searchTerm = document.getElementById('mapSearch').value.toLowerCase();
-            const filteredMarkers = markers.filter(m => 
-                (currentMapFilter === 'all' || m.category === currentMapFilter) &&
-                (m.title.toLowerCase().includes(searchTerm) || m.description.toLowerCase().includes(searchTerm))
-            );
-            
-            if (filteredMarkers.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada marker yang cocok.</div>';
-                return;
-            }
-            
-            filteredMarkers.forEach((markerData) => {
-                const item = document.createElement('div');
-                item.className = 'marker-item';
-                item.onclick = () => {
-                    map.setView([markerData.lat, markerData.lng], 15);
-                    if (mapMarkers[markerData.id]) {
-                        mapMarkers[markerData.id].openPopup();
-                    }
-                };
-                item.innerHTML = `<h4>${markerData.title}</h4><p>${markerData.description}</p><span class="marker-category">${markerData.category}</span>`;
-                container.appendChild(item);
-            });
-        }
-        
-        // ==================== ORIGINAL FUNCTIONS (TIDAK DIUBAH) ====================
-        
-        // Semua fungsi asli Anda tetap sama, hanya yang berhubungan dengan data
-        // yang sudah dimodifikasi di atas
-        
+        // ==================== LOADING SCREEN ====================
         function simulateLoading() {
             const loadingBar = document.getElementById('loading-bar');
             const loadingPercentage = document.getElementById('loading-percentage');
@@ -1840,6 +1639,7 @@
             }, 200);
         }
         
+        // ==================== ADMIN ACCESS CONTROL ====================
         function checkAdminAccess() {
             const isAdminPath = window.location.pathname.includes('/admin');
             const urlParams = new URLSearchParams(window.location.search);
@@ -1871,6 +1671,7 @@
             }
         }
         
+        // ==================== TAB SWITCHING ====================
         function switchTab(tabId) {
             if (tabId === 'admin') {
                 document.querySelectorAll('.app-section').forEach(el => {
@@ -1908,10 +1709,56 @@
             }
         }
         
+        // ==================== MODEL SELECTION ====================
         function selectModel(model) {
             selectedModel = model;
             document.querySelectorAll('.model-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+        }
+        
+        // ==================== MAP FUNCTIONS ====================
+        function initMap() {
+            map = L.map('map').setView([-6.200000, 106.816666], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            markerLayerGroup.addTo(map);
+            
+            map.on('click', function(e) {
+                if(currentMarker) map.removeLayer(currentMarker);
+                currentMarker = L.marker(e.latlng).addTo(map);
+                document.getElementById('btnAddMarker').disabled = false;
+                
+                const panel = document.getElementById('mapPanel');
+                if(window.innerWidth <= 768 && panel.classList.contains('hidden-panel')) {
+                    toggleMapPanel();
+                }
+            });
+        }
+        
+        function addMarkersToMap() {
+            const markers = realtime.getMarkers();
+            markers.forEach(markerData => {
+                addMarkerToMap(markerData);
+            });
+        }
+        
+        function addMarkerToMap(markerData) {
+            const marker = L.marker([markerData.lat, markerData.lng]).addTo(markerLayerGroup);
+            marker.bindPopup(`
+                <b>${markerData.title}</b><br>
+                ${markerData.description}<br>
+                <i>Category: ${markerData.category}</i><br>
+                <small>Added: ${new Date(markerData.createdAt).toLocaleString()}</small>
+            `);
+            mapMarkers[markerData.id] = marker;
+        }
+        
+        function removeMarkerFromMap(markerId) {
+            if (mapMarkers[markerId]) {
+                markerLayerGroup.removeLayer(mapMarkers[markerId]);
+                delete mapMarkers[markerId];
+            }
         }
         
         function toggleMapPanel() {
@@ -1964,6 +1811,7 @@
             renderMarkerList();
         }
         
+        // ==================== QUEST FUNCTIONS ====================
         function filterQuests(event, category) {
             currentQuestFilter = category;
             document.querySelectorAll('.quest-controls .filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -1971,12 +1819,152 @@
             renderQuests();
         }
         
+        function renderQuests() {
+            const container = document.getElementById('questListContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            const quests = realtime.getQuests();
+            
+            let filteredQuests = quests;
+            
+            if (currentQuestFilter !== 'all') {
+                filteredQuests = filteredQuests.filter(q => q.category === currentQuestFilter);
+            }
+            
+            if (currentQuestSearch) {
+                filteredQuests = filteredQuests.filter(q => 
+                    q.title.toLowerCase().includes(currentQuestSearch) || 
+                    q.description.toLowerCase().includes(currentQuestSearch) ||
+                    q.user.toLowerCase().includes(currentQuestSearch)
+                );
+            }
+            
+            if (filteredQuests.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Tidak ada quest yang cocok.</div>';
+                return;
+            }
+            
+            filteredQuests.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'quest-item';
+                const statusClass = q.status === 'open' ? 'status-open' : 'status-taken';
+                const statusText = q.status === 'open' ? 'OPEN' : 'TAKEN';
+                item.innerHTML = `
+                    <span class="quest-status ${statusClass}">${statusText}</span>
+                    <h4>${q.title}</h4>
+                    <p style="font-size: 0.9rem; color: #aaa;">${q.description.substring(0, 80)}${q.description.length > 80 ? '...' : ''}</p>
+                    <div style="margin-top:0.5rem; display: flex; justify-content: space-between; font-size:0.8rem;">
+                        <span style="color: var(--primary);"><i class="fas fa-user"></i> ${q.user}</span>
+                        <span style="color: var(--text-secondary);"><i class="fas fa-tag"></i> ${q.category.toUpperCase()}</span>
+                    </div>`;
+                item.onclick = () => openQuestDetail(q);
+                container.appendChild(item);
+            });
+        }
+        
+        function renderMarkerList() {
+            const container = document.getElementById('markerList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            const markers = realtime.getMarkers();
+            
+            const searchTerm = document.getElementById('mapSearch').value.toLowerCase();
+            const filteredMarkers = markers.filter(m => 
+                (currentMapFilter === 'all' || m.category === currentMapFilter) &&
+                (m.title.toLowerCase().includes(searchTerm) || m.description.toLowerCase().includes(searchTerm))
+            );
+            
+            if (filteredMarkers.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada marker yang cocok.</div>';
+                return;
+            }
+            
+            filteredMarkers.forEach((markerData) => {
+                const item = document.createElement('div');
+                item.className = 'marker-item';
+                item.onclick = () => {
+                    map.setView([markerData.lat, markerData.lng], 15);
+                    if (mapMarkers[markerData.id]) {
+                        mapMarkers[markerData.id].openPopup();
+                    }
+                };
+                item.innerHTML = `<h4>${markerData.title}</h4><p>${markerData.description}</p><span class="marker-category">${markerData.category}</span>`;
+                container.appendChild(item);
+            });
+        }
+        
+        // ==================== MODAL FUNCTIONS ====================
         function openModal(id) { 
             document.getElementById(id).classList.add('active'); 
         }
         
         function closeModal(id) { 
             document.getElementById(id).classList.remove('active'); 
+        }
+        
+        // ==================== QUEST OPERATIONS ====================
+        function submitQuest() {
+            const user = document.getElementById('qUser').value.trim();
+            const title = document.getElementById('qTitle').value.trim();
+            const desc = document.getElementById('qDesc').value.trim();
+            const contact = document.getElementById('qContact').value.trim();
+            const category = document.getElementById('qCategory').value;
+            
+            if(!user || !title || !contact || !desc) {
+                alert("Mohon lengkapi semua data!");
+                return;
+            }
+            
+            const questData = {
+                user,
+                title,
+                description: desc,
+                contact,
+                category,
+                status: 'open'
+            };
+            
+            realtime.emit('addQuest', questData);
+            closeModal('modalPostQuest');
+            
+            document.getElementById('qUser').value = '';
+            document.getElementById('qTitle').value = '';
+            document.getElementById('qDesc').value = '';
+            document.getElementById('qContact').value = '';
+        }
+        
+        function addMarker() {
+            const title = document.getElementById('markerTitle').value;
+            const desc = document.getElementById('markerDesc').value;
+            if(!title) {
+                alert("Judul marker harus diisi!");
+                return;
+            }
+            if(!currentMarker) {
+                alert("Klik peta lokasi dulu!");
+                return;
+            }
+            
+            const latlng = currentMarker.getLatLng();
+            
+            const markerData = {
+                title,
+                description: desc,
+                category: selectedCategory,
+                lat: latlng.lat,
+                lng: latlng.lng,
+                user: 'Anonymous'
+            };
+            
+            realtime.emit('addMarker', markerData);
+            
+            map.removeLayer(currentMarker);
+            currentMarker = null;
+            document.getElementById('markerTitle').value = '';
+            document.getElementById('markerDesc').value = '';
+            document.getElementById('btnAddMarker').disabled = true;
         }
         
         function openQuestDetail(quest) {
@@ -2002,7 +1990,196 @@
             openModal('modalQuestDetail');
         }
         
-        // WHOIS functions (tetap sama)
+        function takeOrder() {
+            const quests = realtime.getQuests();
+            const q = quests.find(x => x.id === currentQuestId);
+            if(q && q.status === 'open') {
+                realtime.emit('updateQuest', { id: q.id, status: 'taken' });
+                closeModal('modalQuestDetail');
+                alert(`Order "${q.title}" berhasil diambil! Silakan hubungi ${q.user}.`);
+            }
+        }
+        
+        // ==================== ADMIN FUNCTIONS ====================
+        function loadAdminDashboard() {
+            if (realtime.getIsAdmin()) {
+                realtime.emit('getAdminStats');
+                loadAdminQuestList();
+                loadAdminMarkerList();
+                loadAdminCategoryList();
+                getVisitorInfo();
+            }
+        }
+        
+        function updateAdminStats(stats) {
+            const elements = {
+                'totalQuests': stats.totalQuests || 0,
+                'totalMarkers': stats.totalMarkers || 0,
+                'questsOpen': stats.questsOpen || 0,
+                'questsTaken': stats.questsTaken || 0,
+                'activeUsers': stats.activeUsers || 0,
+                'markersToday': stats.markersToday || 0
+            };
+            
+            for (const [id, value] of Object.entries(elements)) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            }
+        }
+        
+        function loadAdminQuestList() {
+            const container = document.getElementById('adminQuestList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            const quests = realtime.getQuests();
+            
+            quests.forEach(quest => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${quest.title}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            By: ${quest.user} | Status: <span style="color: ${quest.status === 'open' ? 'var(--success)' : 'var(--warning)'}">${quest.status}</span>
+                        </div>
+                        <span class="category-badge">${quest.category}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteQuest(${quest.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function loadAdminMarkerList() {
+            const container = document.getElementById('adminMarkerList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            const markers = realtime.getMarkers();
+            
+            markers.forEach(marker => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${marker.title}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            ${marker.description.substring(0, 50)}${marker.description.length > 50 ? '...' : ''}
+                        </div>
+                        <span class="category-badge">${marker.category}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteMarker(${marker.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function loadAdminCategoryList() {
+            const container = document.getElementById('adminCategoryList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            const categories = realtime.getCategories();
+            
+            categories.forEach(category => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${category}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            Custom Category
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteCategory('${category}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function deleteQuest(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus quest ini?')) {
+                realtime.emit('deleteQuest', id);
+            }
+        }
+        
+        function deleteMarker(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus marker ini?')) {
+                realtime.emit('deleteMarker', id);
+            }
+        }
+        
+        function deleteCategory(categoryName) {
+            if (confirm(`Apakah Anda yakin ingin menghapus kategori "${categoryName}"?`)) {
+                realtime.emit('deleteCategory', categoryName);
+            }
+        }
+        
+        function addNewCategory() {
+            const newCategory = document.getElementById('newCategoryName').value.trim();
+            if (!newCategory) {
+                alert('Nama kategori tidak boleh kosong!');
+                return;
+            }
+            
+            const categories = realtime.getCategories();
+            if (categories.includes(newCategory)) {
+                alert('Kategori sudah ada!');
+                return;
+            }
+            
+            realtime.emit('addCategory', newCategory);
+            document.getElementById('newCategoryName').value = '';
+        }
+        
+        function clearAllMarkers() {
+            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA markers?')) {
+                realtime.emit('clearAllMarkers');
+            }
+        }
+        
+        function clearAllQuests() {
+            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA quests?')) {
+                realtime.emit('clearAllQuests');
+            }
+        }
+        
+        function clearAllData() {
+            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA data?')) {
+                realtime.emit('clearAllMarkers');
+                realtime.emit('clearAllQuests');
+            }
+        }
+        
+        function getVisitorInfo() {
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('visitorIp').textContent = data.ip;
+                })
+                .catch(() => {
+                    document.getElementById('visitorIp').textContent = 'Unknown';
+                });
+            
+            document.getElementById('visitorBrowser').textContent = navigator.userAgent;
+            document.getElementById('visitorPlatform').textContent = navigator.platform;
+            document.getElementById('visitorScreen').textContent = `${screen.width}x${screen.height}`;
+        }
+        
+        // ==================== TOOLS FUNCTIONS ====================
         async function checkWhois() {
             const domainInput = document.getElementById('domainInput');
             const resDiv = document.getElementById('whoisResult');
@@ -2125,6 +2302,7 @@
                 </div>`;
         }
         
+        // ==================== CHAT AI FUNCTIONS ====================
         async function sendMessage() {
             const chatInput = document.getElementById('chatInput');
             const chatBody = document.getElementById('chatBody');
@@ -2230,26 +2408,16 @@
             return messageDiv; 
         }
         
-        function getVisitorInfo() {
-            fetch('https://api.ipify.org?format=json')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('visitorIp').textContent = data.ip;
-                })
-                .catch(() => {
-                    document.getElementById('visitorIp').textContent = 'Unknown';
-                });
-            
-            document.getElementById('visitorBrowser').textContent = navigator.userAgent;
-            document.getElementById('visitorPlatform').textContent = navigator.platform;
-            document.getElementById('visitorScreen').textContent = `${screen.width}x${screen.height}`;
-        }
-        
+        // ==================== DATA MANAGEMENT ====================
         function exportData() {
+            const quests = realtime.getQuests();
+            const markers = realtime.getMarkers();
+            const categories = realtime.getCategories();
+            
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ 
                 quests, 
                 markers,
-                customCategories,
+                categories,
                 exportedAt: new Date().toISOString() 
             }));
             const anchor = document.createElement('a');
@@ -2272,12 +2440,12 @@
                         const data = JSON.parse(event.target.result);
                         if (data.quests) {
                             data.quests.forEach(quest => {
-                                socket.emit('addQuest', quest);
+                                realtime.emit('addQuest', quest);
                             });
                         }
                         if (data.markers) {
                             data.markers.forEach(marker => {
-                                socket.emit('addMarker', marker);
+                                realtime.emit('addMarker', marker);
                             });
                         }
                         alert('Data berhasil diimport!');
@@ -2291,6 +2459,9 @@
         }
         
         function showAnalytics() {
+            const quests = realtime.getQuests();
+            const markers = realtime.getMarkers();
+            
             const openQuests = quests.filter(q => q.status === 'open').length;
             const takenQuests = quests.filter(q => q.status === 'taken').length;
             const uniqueUsers = new Set(quests.map(q => q.user)).size;
@@ -2306,6 +2477,10 @@ Categories Used: ${categories.join(', ')}`);
         }
         
         function generateReport() {
+            const quests = realtime.getQuests();
+            const markers = realtime.getMarkers();
+            const categories = realtime.getCategories();
+            
             const today = new Date().toDateString();
             const markersToday = markers.filter(m => {
                 const markerDate = new Date(m.createdAt || Date.now()).toDateString();
@@ -2326,7 +2501,8 @@ Categories Used: ${categories.join(', ')}`);
                 recentActivity: {
                     lastQuests: quests.slice(0, 5),
                     lastMarkers: markers.slice(0, 5)
-                }
+                },
+                customCategories: categories
             };
             
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
@@ -2351,7 +2527,6 @@ Categories Used: ${categories.join(', ')}`);
         }
         
         // ==================== INITIALIZATION ====================
-        
         window.onload = function() {
             simulateLoading();
             initMap();
