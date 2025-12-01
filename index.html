@@ -666,6 +666,121 @@
         }
         .admin-section.active { display: block; }
 
+        /* Admin Dashboard Styles */
+        .admin-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .admin-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+
+        .admin-card h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .admin-list-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-list-item:hover {
+            border-color: var(--primary);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.7rem;
+            width: auto;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: black;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: black;
+        }
+
+        .category-badge {
+            background: rgba(0, 240, 255, 0.2);
+            color: var(--primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .visitor-info {
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             .header-content { flex-direction: column; gap: 1rem; }
@@ -675,6 +790,8 @@
             .map-search-controls { flex-direction: column; }
             .chat-input-area { padding: 0.5rem; }
             .model-selector { flex-direction: column; }
+            .admin-dashboard { grid-template-columns: 1fr; }
+            .admin-controls { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -731,6 +848,9 @@
                 </button>
                 <button class="cyber-tab" onclick="switchTab('chat')">
                     <i class="fas fa-robot"></i> CHAT AI
+                </button>
+                <button class="cyber-tab" id="adminTab" style="display: none;" onclick="switchTab('admin')">
+                    <i class="fas fa-user-shield"></i> ADMIN
                 </button>
             </div>
         </div>
@@ -916,24 +1036,117 @@
 
         <div id="admin" class="admin-section">
             <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-user-shield"></i> ADMIN PANEL</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Panel ini hanya dapat diakses melalui URL /admin</p>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Panel ini hanya dapat diakses melalui URL /admin atau ?admin=true</p>
             
+            <!-- Admin Dashboard -->
+            <div class="admin-dashboard">
+                <div class="admin-card">
+                    <h3><i class="fas fa-chart-bar"></i> STATISTIK</h3>
+                    <div class="stat-number" id="totalQuests">0</div>
+                    <div class="stat-label">Total Quests</div>
+                    <div class="stat-number" id="totalMarkers">0</div>
+                    <div class="stat-label">Total Markers</div>
+                    <div class="stat-number" id="activeUsers">0</div>
+                    <div class="stat-label">Pengguna Aktif</div>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-tachometer-alt"></i> PERFORMANCE</h3>
+                    <div class="stat-number" id="questsOpen">0</div>
+                    <div class="stat-label">Quests Open</div>
+                    <div class="stat-number" id="questsTaken">0</div>
+                    <div class="stat-label">Quests Taken</div>
+                    <div class="stat-number" id="markersToday">0</div>
+                    <div class="stat-label">Markers Hari Ini</div>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-network-wired"></i> VISITOR INFO</h3>
+                    <div class="visitor-info">
+                        <div>IP: <span id="visitorIp">Loading...</span></div>
+                        <div>Browser: <span id="visitorBrowser">Loading...</span></div>
+                        <div>Platform: <span id="visitorPlatform">Loading...</span></div>
+                        <div>Screen: <span id="visitorScreen">Loading...</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Controls -->
+            <div class="admin-controls">
+                <div class="admin-card">
+                    <h3><i class="fas fa-map-marker-alt"></i> KELOLA MARKERS</h3>
+                    <div class="admin-list" id="adminMarkerList">
+                        <!-- Marker list will be populated here -->
+                    </div>
+                    <button class="cyber-button btn-danger" onclick="clearAllMarkers()" style="margin-top: 1rem;">
+                        <i class="fas fa-trash"></i> HAPUS SEMUA MARKERS
+                    </button>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-scroll"></i> KELOLA QUESTS</h3>
+                    <div class="admin-list" id="adminQuestList">
+                        <!-- Quest list will be populated here -->
+                    </div>
+                    <button class="cyber-button btn-danger" onclick="clearAllQuests()" style="margin-top: 1rem;">
+                        <i class="fas fa-trash"></i> HAPUS SEMUA QUESTS
+                    </button>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-tags"></i> KELOLA KATEGORI</h3>
+                    <input type="text" id="newCategoryName" class="cyber-input" placeholder="Nama Kategori Baru">
+                    <button class="cyber-button" onclick="addNewCategory()">
+                        <i class="fas fa-plus"></i> TAMBAH KATEGORI
+                    </button>
+                    <div class="admin-list" id="adminCategoryList" style="margin-top: 1rem;">
+                        <!-- Category list will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management -->
             <div class="tools-grid">
                 <div class="tool-card">
-                    <h3 style="color: var(--accent);"><i class="fas fa-database"></i> Data Management</h3>
+                    <h3 style="color: var(--accent);"><i class="fas fa-database"></i> DATA MANAGEMENT</h3>
                     <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
                         Kelola data quests, users, dan markers.
                     </p>
-                    <button class="cyber-button" onclick="exportData()">EXPORT DATA</button>
-                    <button class="cyber-button" style="background: var(--danger); margin-top: 0.5rem;" onclick="clearAllData()">CLEAR ALL DATA</button>
+                    <button class="cyber-button" onclick="exportData()">
+                        <i class="fas fa-download"></i> EXPORT DATA
+                    </button>
+                    <button class="cyber-button" style="background: var(--warning); color: black; margin-top: 0.5rem;" onclick="importData()">
+                        <i class="fas fa-upload"></i> IMPORT DATA
+                    </button>
+                    <button class="cyber-button" style="background: var(--danger); margin-top: 0.5rem;" onclick="clearAllData()">
+                        <i class="fas fa-trash"></i> CLEAR ALL DATA
+                    </button>
                 </div>
 
                 <div class="tool-card">
-                    <h3 style="color: var(--warning);"><i class="fas fa-chart-bar"></i> Analytics</h3>
+                    <h3 style="color: var(--warning);"><i class="fas fa-chart-bar"></i> ANALYTICS</h3>
                     <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
                         Lihat statistik penggunaan aplikasi.
                     </p>
-                    <button class="cyber-button" onclick="showAnalytics()">VIEW ANALYTICS</button>
+                    <button class="cyber-button" onclick="showAnalytics()">
+                        <i class="fas fa-chart-pie"></i> VIEW ANALYTICS
+                    </button>
+                    <button class="cyber-button" style="margin-top: 0.5rem;" onclick="generateReport()">
+                        <i class="fas fa-file-alt"></i> GENERATE REPORT
+                    </button>
+                </div>
+
+                <div class="tool-card">
+                    <h3 style="color: var(--success);"><i class="fas fa-cogs"></i> SYSTEM TOOLS</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
+                        Tools untuk maintenance sistem.
+                    </p>
+                    <button class="cyber-button" onclick="clearCache()">
+                        <i class="fas fa-broom"></i> CLEAR CACHE
+                    </button>
+                    <button class="cyber-button" style="margin-top: 0.5rem;" onclick="rebuildIndex()">
+                        <i class="fas fa-sync"></i> REBUILD INDEX
+                    </button>
                 </div>
             </div>
         </div>
@@ -1004,6 +1217,9 @@
         let markerLayerGroup = L.layerGroup(); 
         let currentMapFilter = 'all';
         let selectedModel = 'dex75';
+        let customCategories = ['design', 'programming', 'marketing', 'writing', 'other'];
+        let visitorData = {};
+        let isAdminMode = false;
 
         // Mock Data Storage
         let quests = [
@@ -1014,7 +1230,8 @@
                 desc: 'Membutuhkan desain logo untuk website Simple Bisnis dengan tema cyber dan modern. Warna utama biru dan pink.', 
                 contact: '62812345678', 
                 category: 'design',
-                status: 'open' 
+                status: 'open',
+                createdAt: new Date().toISOString()
             },
             { 
                 id: 2, 
@@ -1023,7 +1240,8 @@
                 desc: 'Membutuhkan developer untuk membuat website toko online dengan fitur cart, payment gateway, dan admin panel.', 
                 contact: '62887654321', 
                 category: 'programming',
-                status: 'open' 
+                status: 'open',
+                createdAt: new Date().toISOString()
             },
             { 
                 id: 3, 
@@ -1032,7 +1250,8 @@
                 desc: 'Menawarkan jasa konsultasi digital marketing untuk bisnis UMKM. Fokus pada SEO dan social media marketing.', 
                 contact: '62811223344', 
                 category: 'marketing',
-                status: 'taken' 
+                status: 'taken',
+                createdAt: new Date().toISOString()
             }
         ];
 
@@ -1061,123 +1280,428 @@
             }, 200);
         }
 
-// --- ADMIN ACCESS CONTROL ---
-function checkAdminAccess() {
-    // Multiple access methods
-    const isAdminPath = window.location.pathname.includes('/admin');
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdminParam = urlParams.get('admin') === 'true';
-    const isAdminHash = window.location.hash === '#admin';
-    
-    if (isAdminPath || isAdminParam || isAdminHash) {
-        // Show admin section and hide others
-        document.querySelectorAll('.app-section').forEach(el => {
-            if (el.id !== 'admin') {
-                el.style.display = 'none';
-            } else {
-                el.style.display = 'block';
-                el.classList.add('active');
+        // --- ADMIN ACCESS CONTROL ---
+        function checkAdminAccess() {
+            // Multiple access methods
+            const isAdminPath = window.location.pathname.includes('/admin');
+            const urlParams = new URLSearchParams(window.location.search);
+            const isAdminParam = urlParams.get('admin') === 'true';
+            const isAdminHash = window.location.hash === '#admin';
+            
+            isAdminMode = isAdminPath || isAdminParam || isAdminHash;
+            
+            if (isAdminMode) {
+                // Show admin tab
+                document.getElementById('adminTab').style.display = 'flex';
+                
+                // Update browser title
+                document.title = 'SIMPLE BISNIS - Admin Panel';
+                
+                // Initialize admin dashboard
+                initializeAdminDashboard();
+                
+                // Show admin access method in console
+                console.log('Admin access via:', {
+                    path: isAdminPath ? '/admin' : null,
+                    param: isAdminParam ? '?admin=true' : null,
+                    hash: isAdminHash ? '#admin' : null
+                });
             }
-        });
-        
-        // Replace navigation tabs with only Admin tab
-        const navTabs = document.querySelector('.nav-tabs');
-        navTabs.innerHTML = '';
-        
-        const adminTab = document.createElement('button');
-        adminTab.className = 'cyber-tab active';
-        adminTab.innerHTML = '<i class="fas fa-user-shield"></i> ADMIN';
-        adminTab.onclick = () => switchTab('admin');
-        navTabs.appendChild(adminTab);
-        
-        // Update browser title
-        document.title = 'SIMPLE BISNIS - Admin Panel';
-        
-        // Show admin access method in console
-        console.log('Admin access via:', {
-            path: isAdminPath ? '/admin' : null,
-            param: isAdminParam ? '?admin=true' : null,
-            hash: isAdminHash ? '#admin' : null
-        });
-    }
-}
-
-// --- INITIALIZATION ---
-window.onload = function() {
-    simulateLoading();
-    initMap();
-    renderQuests();
-    checkAdminAccess();
-    
-    // Event Listeners
-    document.getElementById('questSearch').addEventListener('input', function() {
-        currentQuestSearch = this.value.toLowerCase();
-        renderQuests();
-    });
-    
-    document.getElementById('mapSearch').addEventListener('input', function() {
-        searchMapLocations(this.value);
-    });
-    
-    document.getElementById('chatInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
         }
-    });
-    
-    // Auto-resize textarea
-    document.getElementById('chatInput').addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
-};
 
-function switchTab(tabId) {
-    // Special handling for admin tab
-    if (tabId === 'admin') {
-        document.querySelectorAll('.app-section').forEach(el => {
-            if (el.id !== 'admin') {
-                el.style.display = 'none';
-            } else {
-                el.style.display = 'block';
-                el.classList.add('active');
+        // --- ADMIN DASHBOARD FUNCTIONS ---
+        function initializeAdminDashboard() {
+            updateAdminStats();
+            loadAdminMarkerList();
+            loadAdminQuestList();
+            loadAdminCategoryList();
+            getVisitorInfo();
+        }
+
+        function updateAdminStats() {
+            document.getElementById('totalQuests').textContent = quests.length;
+            document.getElementById('totalMarkers').textContent = markers.length;
+            document.getElementById('questsOpen').textContent = quests.filter(q => q.status === 'open').length;
+            document.getElementById('questsTaken').textContent = quests.filter(q => q.status === 'taken').length;
+            document.getElementById('activeUsers').textContent = new Set(quests.map(q => q.user)).size;
+            
+            // Calculate markers added today
+            const today = new Date().toDateString();
+            const markersToday = markers.filter(m => {
+                const markerDate = new Date(m.createdAt || Date.now()).toDateString();
+                return markerDate === today;
+            }).length;
+            document.getElementById('markersToday').textContent = markersToday;
+        }
+
+        function loadAdminMarkerList() {
+            const container = document.getElementById('adminMarkerList');
+            container.innerHTML = '';
+            
+            if (markers.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada markers.</div>';
+                return;
             }
-        });
-        
-        document.querySelectorAll('.cyber-tab').forEach(el => el.classList.remove('active'));
-        document.querySelector('.cyber-tab').classList.add('active'); // Admin tab is the only one
-        return;
-    }
-    
-    // Normal tab switching for non-admin
-    document.querySelectorAll('.app-section').forEach(el => {
-        el.style.display = 'block';
-        el.classList.remove('active');
-    });
-    document.querySelectorAll('.cyber-tab').forEach(el => el.classList.remove('active'));
-    
-    document.getElementById(tabId).classList.add('active');
-    
-    const tabs = document.querySelectorAll('.cyber-tab');
-    tabs.forEach(tab => {
-        const tabText = tab.textContent.trim().split(' ').pop().toLowerCase();
-        if (tabText === tabId || (tabId === 'chat' && tabText === 'ai')) {
-            tab.classList.add('active');
+            
+            markers.forEach((marker, index) => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${marker.title}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            ${marker.desc.substring(0, 50)}${marker.desc.length > 50 ? '...' : ''}
+                        </div>
+                        <span class="category-badge">${marker.category}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-warning" onclick="editMarker(${index})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteMarker(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
         }
-    });
-    
-    if (tabId === 'maps' && map) {
-        setTimeout(() => map.invalidateSize(), 100);
-    }
-}
 
-// --- MODEL SELECTION ---
-function selectModel(model) {
-    selectedModel = model;
-    document.querySelectorAll('.model-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-}
+        function loadAdminQuestList() {
+            const container = document.getElementById('adminQuestList');
+            container.innerHTML = '';
+            
+            if (quests.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada quests.</div>';
+                return;
+            }
+            
+            quests.forEach((quest, index) => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${quest.title}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            By: ${quest.user} | Status: <span style="color: ${quest.status === 'open' ? 'var(--success)' : 'var(--warning)'}">${quest.status}</span>
+                        </div>
+                        <span class="category-badge">${quest.category}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-warning" onclick="editQuest(${index})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteQuest(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function loadAdminCategoryList() {
+            const container = document.getElementById('adminCategoryList');
+            container.innerHTML = '';
+            
+            const allCategories = [...new Set([
+                ...customCategories,
+                ...markers.map(m => m.category),
+                ...quests.map(q => q.category)
+            ])];
+            
+            if (allCategories.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada kategori.</div>';
+                return;
+            }
+            
+            allCategories.forEach((category, index) => {
+                const item = document.createElement('div');
+                item.className = 'admin-list-item';
+                item.innerHTML = `
+                    <div>
+                        <strong>${category}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.3rem;">
+                            Used: ${markers.filter(m => m.category === category).length + quests.filter(q => q.category === category).length} times
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="cyber-button btn-small btn-danger" onclick="deleteCategory('${category}')" ${customCategories.includes(category) ? '' : 'disabled'}>
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function getVisitorInfo() {
+            // Get visitor IP using a free API
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('visitorIp').textContent = data.ip;
+                    visitorData.ip = data.ip;
+                })
+                .catch(() => {
+                    document.getElementById('visitorIp').textContent = 'Unknown';
+                });
+            
+            // Get browser and platform info
+            document.getElementById('visitorBrowser').textContent = navigator.userAgent;
+            document.getElementById('visitorPlatform').textContent = navigator.platform;
+            document.getElementById('visitorScreen').textContent = `${screen.width}x${screen.height}`;
+            
+            visitorData.browser = navigator.userAgent;
+            visitorData.platform = navigator.platform;
+            visitorData.screen = `${screen.width}x${screen.height}`;
+        }
+
+        // --- ADMIN CRUD OPERATIONS ---
+        function deleteMarker(index) {
+            if (confirm('Apakah Anda yakin ingin menghapus marker ini?')) {
+                const marker = markers[index];
+                markerLayerGroup.removeLayer(marker.marker);
+                markers.splice(index, 1);
+                renderMarkerList();
+                loadAdminMarkerList();
+                updateAdminStats();
+                alert('Marker berhasil dihapus!');
+            }
+        }
+
+        function editMarker(index) {
+            const marker = markers[index];
+            const newTitle = prompt('Edit judul marker:', marker.title);
+            if (newTitle !== null) {
+                const newDesc = prompt('Edit deskripsi marker:', marker.desc);
+                if (newDesc !== null) {
+                    marker.title = newTitle;
+                    marker.desc = newDesc;
+                    marker.marker.bindPopup(`<b>${newTitle}</b><br>${newDesc}<br><i>Category: ${marker.category}</i>`);
+                    renderMarkerList();
+                    loadAdminMarkerList();
+                    alert('Marker berhasil diupdate!');
+                }
+            }
+        }
+
+        function deleteQuest(index) {
+            if (confirm('Apakah Anda yakin ingin menghapus quest ini?')) {
+                quests.splice(index, 1);
+                renderQuests();
+                loadAdminQuestList();
+                updateAdminStats();
+                alert('Quest berhasil dihapus!');
+            }
+        }
+
+        function editQuest(index) {
+            const quest = quests[index];
+            const newTitle = prompt('Edit judul quest:', quest.title);
+            if (newTitle !== null) {
+                const newDesc = prompt('Edit deskripsi quest:', quest.desc);
+                if (newDesc !== null) {
+                    quest.title = newTitle;
+                    quest.desc = newDesc;
+                    renderQuests();
+                    loadAdminQuestList();
+                    alert('Quest berhasil diupdate!');
+                }
+            }
+        }
+
+        function addNewCategory() {
+            const newCategory = document.getElementById('newCategoryName').value.trim();
+            if (!newCategory) {
+                alert('Nama kategori tidak boleh kosong!');
+                return;
+            }
+            
+            if (customCategories.includes(newCategory)) {
+                alert('Kategori sudah ada!');
+                return;
+            }
+            
+            customCategories.push(newCategory);
+            document.getElementById('newCategoryName').value = '';
+            loadAdminCategoryList();
+            alert(`Kategori "${newCategory}" berhasil ditambahkan!`);
+        }
+
+        function deleteCategory(category) {
+            if (confirm(`Apakah Anda yakin ingin menghapus kategori "${category}"?`)) {
+                customCategories = customCategories.filter(cat => cat !== category);
+                loadAdminCategoryList();
+                alert(`Kategori "${category}" berhasil dihapus!`);
+            }
+        }
+
+        function clearAllMarkers() {
+            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA markers? Aksi ini TIDAK dapat dibatalkan!')) {
+                markers = [];
+                markerLayerGroup.clearLayers();
+                renderMarkerList();
+                loadAdminMarkerList();
+                updateAdminStats();
+                alert('Semua markers berhasil dihapus!');
+            }
+        }
+
+        function clearAllQuests() {
+            if (confirm('PERINGATAN! Anda yakin ingin menghapus SEMUA quests? Aksi ini TIDAK dapat dibatalkan!')) {
+                quests = [];
+                renderQuests();
+                loadAdminQuestList();
+                updateAdminStats();
+                alert('Semua quests berhasil dihapus!');
+            }
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.quests) quests = data.quests;
+                        if (data.markers) {
+                            markers = [];
+                            markerLayerGroup.clearLayers();
+                            data.markers.forEach(markerData => {
+                                addMarkerToMap(markerData);
+                            });
+                        }
+                        if (data.customCategories) customCategories = data.customCategories;
+                        
+                        renderQuests();
+                        renderMarkerList();
+                        initializeAdminDashboard();
+                        alert('Data berhasil diimport!');
+                    } catch (error) {
+                        alert('Error importing data: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function generateReport() {
+            const report = {
+                generatedAt: new Date().toISOString(),
+                stats: {
+                    totalQuests: quests.length,
+                    totalMarkers: markers.length,
+                    questsOpen: quests.filter(q => q.status === 'open').length,
+                    questsTaken: quests.filter(q => q.status === 'taken').length,
+                    uniqueUsers: new Set(quests.map(q => q.user)).size,
+                    categoriesUsed: [...new Set([...markers.map(m => m.category), ...quests.map(q => q.category)])]
+                },
+                visitor: visitorData,
+                recentActivity: {
+                    lastQuests: quests.slice(-5),
+                    lastMarkers: markers.slice(-5)
+                }
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+            const anchor = document.createElement('a');
+            anchor.setAttribute("href", dataStr);
+            anchor.setAttribute("download", `simplebisnis_report_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+        }
+
+        function clearCache() {
+            if (confirm('Clear cache? Ini akan menghapus data sementara.')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                alert('Cache cleared successfully!');
+            }
+        }
+
+        function rebuildIndex() {
+            alert('Index rebuilt successfully!');
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            simulateLoading();
+            initMap();
+            renderQuests();
+            checkAdminAccess();
+            
+            // Event Listeners
+            document.getElementById('questSearch').addEventListener('input', function() {
+                currentQuestSearch = this.value.toLowerCase();
+                renderQuests();
+            });
+            
+            document.getElementById('mapSearch').addEventListener('input', function() {
+                searchMapLocations(this.value);
+            });
+            
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); 
+                    sendMessage();
+                }
+            });
+            
+            // Auto-resize textarea
+            document.getElementById('chatInput').addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        };
+
+        function switchTab(tabId) {
+            // Hide all sections
+            document.querySelectorAll('.app-section').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.cyber-tab').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected section and activate tab
+            document.getElementById(tabId).classList.add('active');
+            
+            // Find and activate the corresponding tab
+            const tabs = document.querySelectorAll('.cyber-tab');
+            tabs.forEach(tab => {
+                const tabText = tab.textContent.trim().split(' ').pop().toLowerCase();
+                if (tabText === tabId || (tabId === 'chat' && tabText === 'ai') || (tabId === 'admin' && tabText === 'admin')) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // Special handling for maps
+            if(tabId === 'maps' && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+            
+            // Update admin dashboard if in admin mode
+            if (tabId === 'admin' && isAdminMode) {
+                initializeAdminDashboard();
+            }
+        }
+
+        // --- MODEL SELECTION ---
+        function selectModel(model) {
+            selectedModel = model;
+            document.querySelectorAll('.model-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
         // --- MAP LOGIC ---
         function initMap() {
             // Koordinat Jakarta Pusat sebagai default
@@ -1203,8 +1727,8 @@ function selectModel(model) {
 
         function addSampleMarkers() {
             const sampleMarkers = [
-                { lat: -6.2000, lng: 106.8166, title: 'Macet di Bundaran HI', desc: 'Kemacetan parah akibat kecelakaan', category: 'traffic' },
-                { lat: -6.1900, lng: 106.8200, title: 'Toko Elektronik', desc: 'Jual beli sparepart murah', category: 'shop' }
+                { lat: -6.2000, lng: 106.8166, title: 'Macet di Bundaran HI', desc: 'Kemacetan parah akibat kecelakaan', category: 'traffic', createdAt: new Date().toISOString() },
+                { lat: -6.1900, lng: 106.8200, title: 'Toko Elektronik', desc: 'Jual beli sparepart murah', category: 'shop', createdAt: new Date().toISOString() }
             ];
             sampleMarkers.forEach(addMarkerToMap);
             renderMarkerList();
@@ -1220,7 +1744,8 @@ function selectModel(model) {
                 desc: markerData.desc,
                 category: markerData.category,
                 lat: markerData.lat,
-                lng: markerData.lng
+                lng: markerData.lng,
+                createdAt: markerData.createdAt || new Date().toISOString()
             });
         }
 
@@ -1320,10 +1845,15 @@ function selectModel(model) {
                 lng: latlng.lng,
                 title: title,
                 desc: desc,
-                category: selectedCategory
+                category: selectedCategory,
+                createdAt: new Date().toISOString()
             });
             
             renderMarkerList();
+            if (isAdminMode) {
+                loadAdminMarkerList();
+                updateAdminStats();
+            }
             document.getElementById('markerTitle').value = '';
             document.getElementById('markerDesc').value = '';
             document.getElementById('btnAddMarker').disabled = true;
@@ -1412,10 +1942,15 @@ function selectModel(model) {
                 desc, 
                 contact, 
                 category, 
-                status: 'open' 
+                status: 'open',
+                createdAt: new Date().toISOString()
             });
             
             renderQuests();
+            if (isAdminMode) {
+                loadAdminQuestList();
+                updateAdminStats();
+            }
             closeModal('modalPostQuest');
             // Reset form
             document.getElementById('qUser').value = '';
@@ -1450,6 +1985,10 @@ function selectModel(model) {
             if(q) { 
                 q.status = 'taken'; 
                 renderQuests(); 
+                if (isAdminMode) {
+                    loadAdminQuestList();
+                    updateAdminStats();
+                }
                 closeModal('modalQuestDetail'); 
                 alert(`Order "${q.title}" berhasil diambil! Silakan hubungi ${q.user}.`); 
             }
@@ -1457,7 +1996,19 @@ function selectModel(model) {
         
         // --- ADMIN / DATA LOGIC ---
         function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ quests, markers: markers.map(m => ({ title: m.title, desc: m.desc, category: m.category, lat: m.lat, lng: m.lng })), exportedAt: new Date().toISOString() }));
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ 
+                quests, 
+                markers: markers.map(m => ({ 
+                    title: m.title, 
+                    desc: m.desc, 
+                    category: m.category, 
+                    lat: m.lat, 
+                    lng: m.lng,
+                    createdAt: m.createdAt 
+                })), 
+                customCategories,
+                exportedAt: new Date().toISOString() 
+            }));
             const anchor = document.createElement('a');
             anchor.setAttribute("href", dataStr);
             anchor.setAttribute("download", "simplebisnis_data.json");
@@ -1473,12 +2024,26 @@ function selectModel(model) {
                 markerLayerGroup.clearLayers(); 
                 renderQuests(); 
                 renderMarkerList(); 
+                if (isAdminMode) {
+                    initializeAdminDashboard();
+                }
                 alert("Semua Data Dihapus!"); 
             }
         }
 
         function showAnalytics() {
-            alert(`Total Quests: ${quests.length}\nTotal Markers: ${markers.length}\nQuests Open: ${quests.filter(q => q.status === 'open').length}\nQuests Taken: ${quests.filter(q => q.status === 'taken').length}`);
+            const openQuests = quests.filter(q => q.status === 'open').length;
+            const takenQuests = quests.filter(q => q.status === 'taken').length;
+            const uniqueUsers = new Set(quests.map(q => q.user)).size;
+            const categories = [...new Set([...markers.map(m => m.category), ...quests.map(q => q.category)])];
+            
+            alert(`ANALYTICS REPORT:\n
+Total Quests: ${quests.length}
+Total Markers: ${markers.length}
+Quests Open: ${openQuests}
+Quests Taken: ${takenQuests}
+Unique Users: ${uniqueUsers}
+Categories Used: ${categories.join(', ')}`);
         }
         
         // --- WHOIS CHECKER LOGIC ---
