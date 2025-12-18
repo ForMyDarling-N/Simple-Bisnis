@@ -1,0 +1,2450 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMPLE BISNIS - Cyber Network (REAL-TIME)</title>
+    
+    <!-- Firebase SDK REAL -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    
+    <!-- Leaflet for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Additional CSS for Real System -->
+    <style>
+        /* -------------------------------------------------------------------
+        CYBER-NETWORK THEME CSS - SEMUA CSS ASLI ANDA
+        ------------------------------------------------------------------- */
+        
+        /* CSS Reset & Variables */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #00f0ff;
+            --secondary: #ff00aa;
+            --accent: #00ff88;
+            --dark: #0a0a1a;
+            --darker: #050510;
+            --card-bg: #111128;
+            --text: #ffffff;
+            --text-secondary: #a0a0c0;
+            --danger: #ff2a6d;
+            --warning: #ffcc00;
+            --success: #00ff88;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--darker);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+            overflow: hidden;
+        }
+
+        .loading-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 240, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 170, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        .loading-logo {
+            font-size: 3.5rem;
+            margin-bottom: 2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .loading-logo-text {
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+
+        .loading-logo-text::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 2px;
+        }
+
+        .loading-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 3rem;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .hologram-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin-bottom: 2rem;
+            perspective: 1000px;
+        }
+
+        .hologram {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(0, 240, 255, 0.8) 0%, transparent 50%),
+                radial-gradient(circle at 70% 70%, rgba(255, 0, 170, 0.6) 0%, transparent 50%);
+            box-shadow: 
+                0 0 50px rgba(0, 240, 255, 0.5),
+                inset 0 0 50px rgba(0, 240, 255, 0.2);
+            animation: hologram-rotate 8s linear infinite, hologram-pulse 3s ease-in-out infinite alternate;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hologram-inner {
+            width: 60%;
+            height: 60%;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 240, 255, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+            font-size: 2rem;
+            animation: hologram-inner 4s linear infinite;
+        }
+
+        .loading-progress-container {
+            width: 300px;
+            margin-top: 2rem;
+        }
+
+        .loading-progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .loading-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .loading-bar::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+            animation: loading-shine 2s infinite;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 5px;
+            margin-top: 1rem;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            animation: dot-pulse 1.5s infinite ease-in-out;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+            background: var(--secondary);
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+            background: var(--accent);
+        }
+
+        @keyframes hologram-rotate {
+            0% { transform: rotateY(0deg) rotateX(0deg); }
+            100% { transform: rotateY(360deg) rotateX(360deg); }
+        }
+
+        @keyframes hologram-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.05); opacity: 1; }
+        }
+
+        @keyframes hologram-inner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes loading-shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes dot-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.7; }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .cyber-header {
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--primary);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo { 
+            display: flex; 
+            align-items: center; 
+            gap: 1rem; 
+            position: relative;
+        }
+        
+        .logo-icon { 
+            font-size: 1.8rem; 
+            color: var(--primary); 
+            animation: pulse 2s infinite;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logo-icon::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        
+        .logo-text { 
+            font-size: 1.8rem; 
+            font-weight: 900; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            padding-right: 10px;
+        }
+        
+        .logo-text::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 1px;
+        }
+
+        .nav-tabs { 
+            display: flex; 
+            gap: 0.5rem; 
+            position: relative;
+        }
+        
+        .cyber-tab {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: var(--text);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+        
+        .cyber-tab::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .cyber-tab:hover::before {
+            left: 100%;
+        }
+        
+        .cyber-tab:hover { 
+            background: rgba(0, 240, 255, 0.1); 
+            border-color: var(--primary); 
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .cyber-tab.active { 
+            background: rgba(0, 240, 255, 0.2); 
+            border-color: var(--primary); 
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5), inset 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+
+        /* Main Layout */
+        .main-container {
+            max-width: 1400px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+            height: calc(100vh - 100px);
+            position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container { padding: 0; margin-top: 0; height: calc(100vh - 140px); }
+            
+            .loading-logo {
+                font-size: 2.5rem;
+            }
+            
+            .hologram-container {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .cyber-tab {
+                padding: 0.6rem 1rem;
+                font-size: 0.7rem;
+            }
+            
+            .logo-text {
+                font-size: 1.5rem;
+            }
+        }
+
+        .app-section { display: none; height: 100%; opacity: 0; transition: opacity 0.3s ease; }
+        .app-section.active { display: block; opacity: 1; }
+
+        /* Inputs & Buttons */
+        .cyber-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 5px;
+            padding: 0.8rem;
+            color: var(--text);
+            width: 100%;
+            margin-bottom: 0.8rem;
+        }
+        .cyber-input:focus { border-color: var(--primary); outline: none; }
+        .cyber-input::placeholder { color: var(--text-secondary); opacity: 0.7; }
+
+        .cyber-button {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 5px;
+            padding: 0.8rem;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+        .cyber-button:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); }
+        .cyber-button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        /* MAPS SECTION */
+        .maps-section {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            background: var(--card-bg);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            height: 100%;
+        }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        .maps-controls {
+            position: absolute; top: 20px; left: 20px; z-index: 999;
+            background: rgba(17, 17, 40, 0.95); backdrop-filter: blur(10px);
+            padding: 1.5rem; border-radius: 10px; border: 1px solid rgba(0, 240, 255, 0.3);
+            width: 350px; max-height: calc(100% - 40px); overflow-y: auto;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (max-width: 768px) {
+            .maps-controls { top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: 80vh; border-radius: 20px 20px 0 0; transform: translateY(0); }
+            .maps-controls.hidden-panel { transform: translateY(100%); }
+        }
+        .mobile-map-toggle {
+            display: none; position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background: var(--primary); color: var(--darker); border: none; border-radius: 50%;
+            width: 50px; height: 50px; font-size: 1.2rem; box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+            cursor: pointer; align-items: center; justify-content: center;
+        }
+        @media (max-width: 768px) { .mobile-map-toggle { display: flex; } }
+        .marker-categories { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin: 1rem 0; }
+        .category-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.5rem; border-radius: 5px; color: var(--text-secondary);
+            cursor: pointer; font-size: 0.7rem; display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+            transition: all 0.2s ease;
+        }
+        .category-btn:hover { background: rgba(0, 240, 255, 0.05); }
+        .category-btn.active { border-color: var(--primary); background: rgba(0, 240, 255, 0.2); color: var(--text); box-shadow: 0 0 5px rgba(0, 240, 255, 0.3); }
+        .map-search-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .map-search-box { flex: 1; position: relative; }
+        .map-search-box i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        .map-search-box input { padding-left: 35px; }
+        .map-filter-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer;
+            font-size: 0.8rem; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.3rem;
+        }
+        .map-filter-btn.active { background: rgba(0, 240, 255, 0.2); border-color: var(--primary); color: var(--text); }
+        .marker-list-container { margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; }
+        .marker-list { max-height: 300px; overflow-y: auto; margin-top: 0.5rem; }
+        .marker-item {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px; padding: 0.8rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.3s ease;
+        }
+        .marker-item:hover { border-color: var(--primary); background: rgba(0, 240, 255, 0.1); }
+        .marker-item h4 { color: var(--primary); margin-bottom: 0.3rem; font-size: 0.9rem; }
+        .marker-item p { color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.3rem; }
+        .marker-item .marker-category {
+            display: inline-block; background: rgba(0, 240, 255, 0.2); color: var(--primary);
+            padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem;
+        }
+
+        /* QUEST BOARD */
+        .quest-section {
+            background: var(--card-bg); border-radius: 15px;
+            border: 1px solid rgba(0, 240, 255, 0.3); height: 100%;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .quest-header { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .quest-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+        .quest-item {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px; padding: 1.5rem; cursor: pointer; transition: 0.3s; position: relative;
+        }
+        .quest-item:hover { transform: translateY(-3px); border-color: var(--primary); }
+        .quest-item h4 { color: var(--primary); margin-bottom: 0.5rem; }
+        .quest-status { float: right; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; }
+        .status-open { background: var(--success); color: black; }
+        .status-taken { background: var(--warning); color: black; }
+        .quest-controls { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 200px; position: relative; }
+        .search-box i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        .search-box input { padding-left: 35px; }
+        .category-filter { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer;
+            font-size: 0.8rem; transition: all 0.3s ease;
+        }
+        .filter-btn.active { background: rgba(0, 240, 255, 0.2); border-color: var(--primary); color: var(--text); }
+        .fab-add-quest {
+            position: absolute; bottom: 2rem; right: 2rem; width: 60px; height: 60px;
+            background: var(--primary); color: var(--darker); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); border: none; cursor: pointer; z-index: 10;
+            transition: 0.3s;
+        }
+        .fab-add-quest:hover { transform: scale(1.1); }
+
+        /* TOOLS SECTION (WHOIS) */
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; padding: 2rem; }
+        @media (max-width: 768px) { .tools-grid { padding: 1rem; } }
+        .tool-card {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px; padding: 1.5rem;
+        }
+        .tool-result {
+            margin-top: 1rem; padding: 1rem;
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;
+            display: none; font-family: 'Consolas', monospace; font-size: 0.85rem;
+            white-space: pre-wrap; color: #d0d0d0; line-height: 1.5;
+        }
+        
+        /* AI CHAT SECTION */
+        .ai-chat-section {
+            background: var(--card-bg); border-radius: 15px;
+            border: 1px solid rgba(0, 240, 255, 0.3); height: 100%;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .chat-header { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .chat-body { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+        .chat-input-area { 
+            padding: 1rem 1.5rem; 
+            border-top: 1px solid rgba(255,255,255,0.1); 
+            display: flex; 
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.7rem 1rem;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background: var(--primary);
+            color: var(--darker);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .ai-message {
+            background: var(--dark);
+            color: var(--text);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .message-model-tag {
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-top: 5px;
+            display: block;
+        }
+        .chat-controls { display: flex; gap: 0.5rem; align-items: flex-start; }
+        .chat-input-wrapper { flex-grow: 1; position: relative; }
+        .chat-input-wrapper textarea {
+            min-height: 50px;
+            resize: none;
+            padding-right: 40px; 
+            padding-top: 15px;
+        }
+        .chat-input-wrapper .send-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .chat-input-wrapper .send-btn:hover { color: var(--secondary); }
+        .chat-input-wrapper .send-btn:disabled { color: #444; cursor: not-allowed; }
+
+        .model-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .model-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .model-btn.active {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: var(--primary);
+            color: var(--text);
+        }
+
+        /* MODALS */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 2000; justify-content: center; align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--card-bg); border: 1px solid var(--primary);
+            padding: 2rem; border-radius: 15px; width: 90%; max-width: 500px;
+            max-height: 90vh; overflow-y: auto;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute; top: 1rem; right: 1rem;
+            background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;
+            transition: 0.3s;
+        }
+        .close-modal:hover { color: var(--danger); transform: rotate(90deg); }
+
+        /* Admin Section */
+        .admin-section {
+            display: none;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            margin: 1rem;
+        }
+        .admin-section.active { display: block; }
+
+        /* Admin Dashboard Styles */
+        .admin-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 10px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .admin-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+
+        .admin-card h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .admin-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+        }
+
+        .admin-list-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-list-item:hover {
+            border-color: var(--primary);
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.7rem;
+            width: auto;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: black;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: black;
+        }
+
+        .category-badge {
+            background: rgba(0, 240, 255, 0.2);
+            color: var(--primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+        }
+
+        .visitor-info {
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .header-content { flex-direction: column; gap: 1rem; }
+            .nav-tabs { width: 100%; justify-content: center; }
+            .cyber-tab { font-size: 0.8rem; padding: 0.6rem; }
+            .quest-controls { flex-direction: column; }
+            .map-search-controls { flex-direction: column; }
+            .chat-input-area { padding: 0.5rem; }
+            .model-selector { flex-direction: column; }
+            .admin-dashboard { grid-template-columns: 1fr; }
+            .admin-controls { grid-template-columns: 1fr; }
+        }
+
+        /* Real-time UI Elements */
+        .connection-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,240,255,0.3);
+        }
+        
+        .connection-status.connected {
+            color: #00ff88;
+        }
+        
+        .connection-status.disconnected {
+            color: #ff2a6d;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .connection-status.reconnecting {
+            color: #ffcc00;
+            animation: pulse 1s infinite;
+        }
+        
+        .realtime-notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--primary);
+            color: var(--darker);
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 9999;
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s;
+            max-width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(0,240,255,0.5);
+        }
+        
+        .realtime-notification.success {
+            background: var(--success);
+            color: black;
+        }
+        
+        .realtime-notification.error {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .realtime-notification.warning {
+            background: var(--warning);
+            color: black;
+        }
+        
+        .realtime-notification.info {
+            background: var(--primary);
+            color: var(--darker);
+        }
+        
+        .user-count {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,240,255,0.3);
+            color: var(--primary);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Real System Styles */
+        .real-badge {
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            color: var(--darker);
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .admin-stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(0,240,255,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-stat-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .admin-tabs {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .admin-tab-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .admin-tab-btn:hover {
+            background: rgba(0,240,255,0.1);
+            border-color: var(--primary);
+        }
+        
+        .admin-tab-btn.active {
+            background: rgba(0,240,255,0.2);
+            border-color: var(--primary);
+            color: var(--text);
+        }
+        
+        .admin-tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .admin-tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Payment Status Styles */
+        .payment-status {
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .status-pending_payment {
+            background: #ff9800;
+            color: black;
+        }
+        
+        .status-awaiting_verification {
+            background: #2196f3;
+            color: white;
+        }
+        
+        .status-completed {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-cancelled {
+            background: #f44336;
+            color: white;
+        }
+        
+        /* Quest Status */
+        .quest-status {
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        
+        .status-open {
+            background: var(--success);
+            color: black;
+        }
+        
+        .status-taken {
+            background: var(--warning);
+            color: black;
+        }
+        
+        /* Verification Badge */
+        .verified-badge {
+            background: var(--success);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loading-container">
+            <div class="loading-background"></div>
+            <div class="loading-logo">
+                <span class="loading-logo-text">SIMPLE BISNIS</span>
+            </div>
+            <div class="loading-subtitle">
+                Cyber Network Platform - REAL-TIME EDITION
+            </div>
+            <div class="hologram-container">
+                <div class="hologram">
+                    <div class="hologram-inner">
+                        <i class="fas fa-satellite-dish"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="loading-progress-container">
+                <div class="loading-progress-text">
+                    <span>CONNECTING TO SERVER</span>
+                    <span id="loading-percentage">0%</span>
+                </div>
+                <div class="loading-progress">
+                    <div class="loading-bar" id="loading-bar"></div>
+                </div>
+            </div>
+            <div class="loading-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <header class="cyber-header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-satellite-dish logo-icon"></i>
+                <div class="logo-text">SIMPLE BISNIS</div>
+            </div>
+            <div class="nav-tabs">
+                <button class="cyber-tab active" onclick="switchTab('maps')">
+                    <i class="fas fa-map-marked-alt"></i> MAPS
+                </button>
+                <button class="cyber-tab" onclick="switchTab('quests')">
+                    <i class="fas fa-scroll"></i> QUEST BOARD
+                </button>
+                <button class="cyber-tab" onclick="switchTab('tools')">
+                    <i class="fas fa-tools"></i> TOOLS
+                </button>
+                <button class="cyber-tab" onclick="switchTab('chat')">
+                    <i class="fas fa-robot"></i> CHAT AI
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <div id="maps" class="app-section active">
+            <div class="maps-section">
+                <button class="mobile-map-toggle" onclick="toggleMapPanel()">
+                    <i class="fas fa-layer-group"></i>
+                </button>
+
+                <div class="maps-controls" id="mapPanel">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: var(--primary);"><i class="fas fa-map-pin"></i> KONTROL MAP</h3>
+                        <button onclick="toggleMapPanel()" style="background:none; border:none; color:white; cursor:pointer;" title="Minimize">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+
+                    <div style="background: rgba(0,240,255,0.1); padding: 0.5rem; border-radius: 5px; margin-bottom: 1rem; font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> Klik pada peta untuk memilih lokasi marker.
+                    </div>
+
+                    <div class="map-search-controls">
+                        <div class="map-search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="mapSearch" class="cyber-input" placeholder="Cari lokasi...">
+                        </div>
+                        <button class="map-filter-btn" onclick="toggleMapFilter()">
+                            <i class="fas fa-filter"></i> Filter
+                        </button>
+                    </div>
+
+                    <div id="mapFilterOptions" style="display: none; margin-bottom: 1rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 0.5rem;">Filter Kategori:</div>
+                        <div class="category-filter">
+                            <button class="filter-btn active" onclick="filterMapMarkers(event, 'all')">Semua</button>
+                            <button class="filter-btn" onclick="filterMapMarkers(event, 'traffic')">Macet</button>
+                            <button class="filter-btn" onclick="filterMapMarkers(event, 'accident')">Kecelakaan</button>
+                            <button class="filter-btn" onclick="filterMapMarkers(event, 'shop')">Toko</button>
+                            <button class="filter-btn" onclick="filterMapMarkers(event, 'service')">Jasa</button>
+                            <button class="filter-btn" onclick="filterMapMarkers(event, 'event')">Event</button>
+                        </div>
+                    </div>
+
+                    <input type="text" id="markerTitle" class="cyber-input" placeholder="Judul (Cth: Macet Total)">
+                    <textarea id="markerDesc" class="cyber-input" rows="2" placeholder="Deskripsi Singkat..."></textarea>
+
+                    <label style="color: var(--text-secondary); font-size: 0.8rem;">Kategori Marker:</label>
+                    <div class="marker-categories" id="categoryGrid">
+                        <div class="category-btn active" onclick="selectCategory(this, 'traffic')">
+                            <i class="fas fa-traffic-light"></i> Macet
+                        </div>
+                        <div class="category-btn" onclick="selectCategory(this, 'accident')">
+                            <i class="fas fa-car-crash"></i> Kecelakaan
+                        </div>
+                        <div class="category-btn" onclick="selectCategory(this, 'shop')">
+                            <i class="fas fa-store"></i> Toko
+                        </div>
+                        <div class="category-btn" onclick="selectCategory(this, 'service')">
+                            <i class="fas fa-tools"></i> Jasa
+                        </div>
+                        <div class="category-btn" onclick="selectCategory(this, 'event')">
+                            <i class="fas fa-calendar"></i> Event
+                        </div>
+                        <div class="category-btn" onclick="selectCategory(this, 'other')">
+                            <i class="fas fa-map-marker-alt"></i> Lainnya
+                        </div>
+                    </div>
+
+                    <label style="color: var(--text-secondary); font-size: 0.8rem;">Buat Kategori Custom:</label>
+                    <div class="custom-maker-group">
+                        <input type="text" id="customCatName" class="cyber-input" style="margin-bottom:0;" placeholder="Nama Kategori Baru...">
+                        <button class="cyber-button" onclick="saveCustomCategory()" style="margin-top: 0.5rem;">
+                            SIMPAN KATEGORI
+                        </button>
+                    </div>
+                    <div id="customCatList" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;"></div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <button class="cyber-button" onclick="addMarker()" id="btnAddMarker" disabled>
+                            <i class="fas fa-plus-circle"></i> TAMBAH MARKER
+                        </button>
+                    </div>
+
+                    <div class="marker-list-container">
+                        <h4 style="color: var(--primary); margin-bottom: 0.5rem;">
+                            <i class="fas fa-list"></i> DAFTAR MARKER
+                        </h4>
+                        <div class="marker-list" id="markerList">
+                            <!-- Marker list akan diisi real-time -->
+                        </div>
+                    </div>
+                </div>
+                <div id="map"></div>
+            </div>
+        </div>
+
+        <div id="quests" class="app-section">
+            <div class="quest-section">
+                <div class="quest-header">
+                    <h2 style="color: var(--primary);"><i class="fas fa-scroll"></i> PAPAN QUEST</h2>
+                    <p style="color: var(--text-secondary);">Ambil pekerjaan atau tawarkan jasa di sini.</p>
+                    
+                    <div class="quest-controls">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="questSearch" class="cyber-input" placeholder="Cari quest...">
+                        </div>
+                        <div class="category-filter">
+                            <button class="filter-btn active" onclick="filterQuests(event, 'all')">Semua</button>
+                            <button class="filter-btn" onclick="filterQuests(event, 'design')">Desain</button>
+                            <button class="filter-btn" onclick="filterQuests(event, 'programming')">Programming</button>
+                            <button class="filter-btn" onclick="filterQuests(event, 'marketing')">Marketing</button>
+                            <button class="filter-btn" onclick="filterQuests(event, 'writing')">Writing</button>
+                            <button class="filter-btn" onclick="filterQuests(event, 'other')">Lainnya</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quest-list" id="questListContainer">
+                    <!-- Quest list akan diisi real-time -->
+                </div>
+
+                <button class="fab-add-quest" onclick="openModal('modalPostQuest')">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="tools" class="app-section">
+            <h2 style="color: var(--primary); margin-bottom: 1rem; padding: 0 1rem;"><i class="fas fa-terminal"></i> CYBER TOOLS</h2>
+            <div class="tools-grid">
+                
+                <div class="tool-card">
+                    <h3 style="color: var(--warning);"><i class="fas fa-globe"></i> WHOIS & DOMAIN INFO</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
+                        Cek status domain terdaftar atau tidak (Menggunakan Google DNS over HTTPS).
+                    </p>
+                    <input type="text" id="domainInput" class="cyber-input" placeholder="contoh: google.com">
+                    <button class="cyber-button" onclick="checkWhois()">CEK DOMAIN</button>
+                    <div id="whoisResult" class="tool-result"></div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div id="chat" class="app-section">
+            <div class="ai-chat-section">
+                <div class="chat-header">
+                    <h2 style="color: var(--primary);"><i class="fas fa-robot"></i> CHAT AI</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem;">DeX 75 AI & Pollination AI Powered</p>
+                    
+                    <div class="model-selector">
+                        <button class="model-btn active" onclick="selectModel('dex75')">
+                            <i class="fas fa-brain"></i> DeX 75 AI
+                        </button>
+                        <button class="model-btn" onclick="selectModel('pollination')">
+                            <i class="fas fa-robot"></i> Pollination AI
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-body" id="chatBody">
+                    <div class="ai-message message">
+                        Halo! Saya adalah AI asisten yang siap membantu Anda. Silakan pilih model AI dan mulai chat.
+                        <span class="message-model-tag">System</span>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="chat-controls">
+                        <div class="chat-input-wrapper">
+                            <textarea id="chatInput" class="cyber-input" rows="1" placeholder="Tulis pesan..." style="margin-bottom: 0;"></textarea>
+                            <button class="send-btn" onclick="sendMessage()" id="chatSendButton">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin" class="admin-section">
+            <h2 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-user-shield"></i> ADMIN PANEL</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Panel ini hanya dapat diakses melalui URL /admin</p>
+            
+            <!-- Admin Dashboard -->
+            <div class="admin-dashboard">
+                <div class="admin-card">
+                    <h3><i class="fas fa-chart-bar"></i> STATISTIK</h3>
+                    <div class="stat-number" id="totalQuests">0</div>
+                    <div class="stat-label">Total Quests</div>
+                    <div class="stat-number" id="totalMarkers">0</div>
+                    <div class="stat-label">Total Markers</div>
+                    <div class="stat-number" id="activeUsers">0</div>
+                    <div class="stat-label">Pengguna Aktif</div>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-tachometer-alt"></i> PERFORMANCE</h3>
+                    <div class="stat-number" id="questsOpen">0</div>
+                    <div class="stat-label">Quests Open</div>
+                    <div class="stat-number" id="questsTaken">0</div>
+                    <div class="stat-label">Quests Taken</div>
+                    <div class="stat-number" id="markersToday">0</div>
+                    <div class="stat-label">Markers Hari Ini</div>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-network-wired"></i> VISITOR INFO</h3>
+                    <div class="visitor-info">
+                        <div>IP: <span id="visitorIp">Loading...</span></div>
+                        <div>Browser: <span id="visitorBrowser">Loading...</span></div>
+                        <div>Platform: <span id="visitorPlatform">Loading...</span></div>
+                        <div>Screen: <span id="visitorScreen">Loading...</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Controls -->
+            <div class="admin-controls">
+                <div class="admin-card">
+                    <h3><i class="fas fa-map-marker-alt"></i> KELOLA MARKERS</h3>
+                    <div class="admin-list" id="adminMarkerList">
+                        <!-- Marker list akan diisi real-time -->
+                    </div>
+                    <button class="cyber-button btn-danger" onclick="clearAllMarkers()" style="margin-top: 1rem;">
+                        <i class="fas fa-trash"></i> HAPUS SEMUA MARKERS
+                    </button>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-scroll"></i> KELOLA QUESTS</h3>
+                    <div class="admin-list" id="adminQuestList">
+                        <!-- Quest list akan diisi real-time -->
+                    </div>
+                    <button class="cyber-button btn-danger" onclick="clearAllQuests()" style="margin-top: 1rem;">
+                        <i class="fas fa-trash"></i> HAPUS SEMUA QUESTS
+                    </button>
+                </div>
+
+                <div class="admin-card">
+                    <h3><i class="fas fa-tags"></i> KELOLA KATEGORI</h3>
+                    <input type="text" id="newCategoryName" class="cyber-input" placeholder="Nama Kategori Baru">
+                    <button class="cyber-button" onclick="addNewCategory()">
+                        <i class="fas fa-plus"></i> TAMBAH KATEGORI
+                    </button>
+                    <div class="admin-list" id="adminCategoryList" style="margin-top: 1rem;">
+                        <!-- Category list akan diisi real-time -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <h3 style="color: var(--accent);"><i class="fas fa-database"></i> DATA MANAGEMENT</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
+                        Kelola data quests, users, dan markers.
+                    </p>
+                    <button class="cyber-button" onclick="exportData()">
+                        <i class="fas fa-download"></i> EXPORT DATA
+                    </button>
+                    <button class="cyber-button" style="background: var(--warning); color: black; margin-top: 0.5rem;" onclick="importData()">
+                        <i class="fas fa-upload"></i> IMPORT DATA
+                    </button>
+                    <button class="cyber-button" style="background: var(--danger); margin-top: 0.5rem;" onclick="clearAllData()">
+                        <i class="fas fa-trash"></i> CLEAR ALL DATA
+                    </button>
+                </div>
+
+                <div class="tool-card">
+                    <h3 style="color: var(--warning);"><i class="fas fa-chart-bar"></i> ANALYTICS</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
+                        Lihat statistik penggunaan aplikasi.
+                    </p>
+                    <button class="cyber-button" onclick="showAnalytics()">
+                        <i class="fas fa-chart-pie"></i> VIEW ANALYTICS
+                    </button>
+                    <button class="cyber-button" style="margin-top: 0.5rem;" onclick="generateReport()">
+                        <i class="fas fa-file-alt"></i> GENERATE REPORT
+                    </button>
+                </div>
+
+                <div class="tool-card">
+                    <h3 style="color: var(--success);"><i class="fas fa-cogs"></i> SYSTEM TOOLS</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 1rem;">
+                        Tools untuk maintenance sistem.
+                    </p>
+                    <button class="cyber-button" onclick="clearCache()">
+                        <i class="fas fa-broom"></i> CLEAR CACHE
+                    </button>
+                    <button class="cyber-button" style="margin-top: 0.5rem;" onclick="rebuildIndex()">
+                        <i class="fas fa-sync"></i> REBUILD INDEX
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Original Modals -->
+    <div id="modalPostQuest" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('modalPostQuest')">&times;</button>
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">BUAT QUEST BARU</h3>
+            
+            <input type="text" id="qUser" class="cyber-input" placeholder="Nama Anda / Username">
+            <input type="text" id="qTitle" class="cyber-input" placeholder="Judul Quest (Cth: Butuh Desain Logo)">
+            <textarea id="qDesc" class="cyber-input" rows="4" placeholder="Detail pekerjaan..."></textarea>
+            <input type="text" id="qContact" class="cyber-input" placeholder="Nomor WA (628xxx) / Telegram">
+            
+            <label style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 1rem;">Kategori Quest:</label>
+            <select id="qCategory" class="cyber-input">
+                <option value="design">Desain</option>
+                <option value="programming">Programming</option>
+                <option value="marketing">Marketing</option>
+                <option value="writing">Writing</option>
+                <option value="other">Lainnya</option>
+            </select>
+            
+            <button class="cyber-button" onclick="submitQuest()">POSTING QUEST</button>
+        </div>
+    </div>
+
+    <div id="modalQuestDetail" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('modalQuestDetail')">&times;</button>
+            <h3 id="dTitle" style="color: var(--primary); margin-bottom: 0.5rem;">Judul Quest</h3>
+            <div style="font-size: 0.8rem; color: var(--accent); margin-bottom: 1rem;">
+                Posted by: <span id="dUser">User</span> | 
+                Kategori: <span id="dCategory">-</span>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 5px; margin-bottom: 1.5rem;">
+                <p id="dDesc">Deskripsi...</p>
+            </div>
+
+            <div style="display: grid; gap: 1rem;">
+                <button class="cyber-button" style="background: var(--success); color: #000;" id="btnWA">
+                    <i class="fab fa-whatsapp"></i> HUBUNGI WA
+                </button>
+                <button class="cyber-button" onclick="takeOrder()" id="btnTake">
+                    <i class="fas fa-check-circle"></i> AMBIL ORDER
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for REAL System -->
+    <div id="realLoginModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('realLoginModal')">&times;</button>
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">
+                <i class="fas fa-sign-in-alt"></i> LOGIN REAL
+            </h3>
+            <input type="email" id="realLoginEmail" class="cyber-input" placeholder="Email" required>
+            <input type="password" id="realLoginPassword" class="cyber-input" placeholder="Password" required>
+            <button class="cyber-button" onclick="loginReal()">
+                <i class="fas fa-sign-in-alt"></i> LOGIN
+            </button>
+            <div style="margin-top: 15px; text-align: center;">
+                <a href="#" onclick="showRealResetModal()" style="color: var(--primary); font-size: 0.9rem;">
+                    Lupa Password?
+                </a>
+                <div style="margin-top: 10px; color: var(--text-secondary);">
+                    Belum punya akun? 
+                    <a href="#" onclick="showRealRegisterModal()" style="color: var(--accent); font-weight: bold;">
+                        DAFTAR DI SINI
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="realRegisterModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('realRegisterModal')">&times;</button>
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">
+                <i class="fas fa-user-plus"></i> REGISTER REAL
+            </h3>
+            <input type="email" id="realRegEmail" class="cyber-input" placeholder="Email" required>
+            <input type="password" id="realRegPassword" class="cyber-input" placeholder="Password (min. 6 karakter)" required>
+            <input type="password" id="realRegConfirmPassword" class="cyber-input" placeholder="Konfirmasi Password" required>
+            <button class="cyber-button" onclick="registerReal()">
+                <i class="fas fa-user-plus"></i> DAFTAR
+            </button>
+            <div style="margin-top: 15px; text-align: center; color: var(--text-secondary);">
+                Dengan mendaftar, Anda menyetujui Syarat & Ketentuan
+            </div>
+        </div>
+    </div>
+
+    <div id="realOTPModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('realOTPModal')">&times;</button>
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">
+                <i class="fas fa-shield-alt"></i> VERIFIKASI OTP
+            </h3>
+            <input type="hidden" id="realOTPEmail">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">
+                    Kode OTP telah dikirim ke email Anda
+                </div>
+                <input type="text" id="realOTPCode" class="cyber-input" 
+                       placeholder="Masukkan 6 digit OTP" maxlength="6" style="text-align: center; font-size: 1.2rem;">
+            </div>
+            <button class="cyber-button" onclick="verifyOTPReal()">
+                <i class="fas fa-check-circle"></i> VERIFIKASI
+            </button>
+            <div style="margin-top: 15px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
+                <i class="fas fa-clock"></i> OTP berlaku 10 menit
+            </div>
+        </div>
+    </div>
+
+    <div id="realResetModal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('realResetModal')">&times;</button>
+            <h3 style="color: var(--primary); margin-bottom: 1rem;">
+                <i class="fas fa-key"></i> RESET PASSWORD
+            </h3>
+            <input type="email" id="realResetEmail" class="cyber-input" placeholder="Email terdaftar" required>
+            <button class="cyber-button" onclick="resetPasswordReal()">
+                <i class="fas fa-paper-plane"></i> KIRIM RESET LINK
+            </button>
+            <div style="margin-top: 15px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                Instruksi reset password akan dikirim ke email Anda
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="realProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <button class="close-modal" onclick="closeModal('realProfileModal')">&times;</button>
+            <div id="realProfileContent">
+                <!-- Profile content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Scripts untuk REAL System -->
+    <!-- Scripts akan diinisialisasi secara inline untuk demo -->
+    <script>
+        // ==================== FIREBASE CONFIGURATION ====================
+        const firebaseConfigReal = {
+            apiKey: "AIzaSyDummyKeyForDemoPurposesOnly",
+            authDomain: "simple-bisnis-real.firebaseapp.com",
+            databaseURL: "https://simple-bisnis-real-default-rtdb.firebaseio.com",
+            projectId: "simple-bisnis-real",
+            storageBucket: "simple-bisnis-real.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfigReal, "realApp");
+        const realAuth = firebase.auth(firebase.app("realApp"));
+        const realDatabase = firebase.database(firebase.app("realApp"));
+        const realFirestore = firebase.firestore(firebase.app("realApp"));
+        
+        // Global variables for REAL system
+        let currentRealUser = null;
+        let realTimeQuests = [];
+        let realTimeMarkers = [];
+        let realTimeUsers = [];
+        
+        // ==================== AUTH FUNCTIONS ====================
+        window.loginReal = async function() {
+            const email = document.getElementById('realLoginEmail').value;
+            const password = document.getElementById('realLoginPassword').value;
+            
+            if (!email || !password) {
+                showNotification('Mohon isi email dan password', 'error');
+                return;
+            }
+            
+            try {
+                const userCredential = await realAuth.signInWithEmailAndPassword(email, password);
+                currentRealUser = userCredential.user;
+                showNotification('Login berhasil!', 'success');
+                closeModal('realLoginModal');
+                
+                // Update UI
+                updateUIForRealUser(currentRealUser);
+                
+                // Load user data
+                loadRealUserData();
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification(`Login gagal: ${error.message}`, 'error');
+            }
+        };
+        
+        window.registerReal = async function() {
+            const email = document.getElementById('realRegEmail').value;
+            const password = document.getElementById('realRegPassword').value;
+            const confirmPassword = document.getElementById('realRegConfirmPassword').value;
+            
+            if (!email || !password) {
+                showNotification('Mohon isi semua field', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showNotification('Password minimal 6 karakter', 'error');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showNotification('Password tidak cocok', 'error');
+                return;
+            }
+            
+            try {
+                const userCredential = await realAuth.createUserWithEmailAndPassword(email, password);
+                currentRealUser = userCredential.user;
+                
+                // Create user profile in database
+                await realDatabase.ref(`users/${currentRealUser.uid}`).set({
+                    email: email,
+                    createdAt: new Date().toISOString(),
+                    stats: {
+                        markersPosted: 0,
+                        questsPosted: 0,
+                        completedTransactions: 0
+                    },
+                    reputation: 50,
+                    isVerified: false
+                });
+                
+                showNotification('Registrasi berhasil!', 'success');
+                closeModal('realRegisterModal');
+                
+                // Show OTP modal
+                document.getElementById('realOTPEmail').value = email;
+                openModal('realOTPModal');
+                
+                // Send OTP (dummy function for demo)
+                sendOTPEmail(email);
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                showNotification(`Registrasi gagal: ${error.message}`, 'error');
+            }
+        };
+        
+        window.verifyOTPReal = function() {
+            const otpCode = document.getElementById('realOTPCode').value;
+            const email = document.getElementById('realOTPEmail').value;
+            
+            if (!otpCode || otpCode.length !== 6) {
+                showNotification('Kode OTP harus 6 digit', 'error');
+                return;
+            }
+            
+            // In production, verify OTP with backend
+            // For demo, accept any 6-digit code
+            if (otpCode.length === 6) {
+                // Mark user as verified
+                realDatabase.ref(`users/${currentRealUser.uid}/isVerified`).set(true);
+                
+                showNotification('Verifikasi berhasil! Akun Anda telah aktif.', 'success');
+                closeModal('realOTPModal');
+                
+                // Update UI
+                updateUIForRealUser(currentRealUser);
+                loadRealUserData();
+            } else {
+                showNotification('Kode OTP salah', 'error');
+            }
+        };
+        
+        window.resetPasswordReal = async function() {
+            const email = document.getElementById('realResetEmail').value;
+            
+            if (!email) {
+                showNotification('Mohon isi email', 'error');
+                return;
+            }
+            
+            try {
+                await realAuth.sendPasswordResetEmail(email);
+                showNotification('Link reset password telah dikirim ke email Anda', 'success');
+                closeModal('realResetModal');
+            } catch (error) {
+                console.error('Reset password error:', error);
+                showNotification(`Gagal mengirim reset link: ${error.message}`, 'error');
+            }
+        };
+        
+        window.logoutReal = async function() {
+            try {
+                await realAuth.signOut();
+                currentRealUser = null;
+                showNotification('Logout berhasil', 'info');
+                updateUIForRealGuest();
+            } catch (error) {
+                console.error('Logout error:', error);
+                showNotification(`Logout gagal: ${error.message}`, 'error');
+            }
+        };
+        
+        // ==================== REAL-TIME DATA FUNCTIONS ====================
+        function loadRealUserData() {
+            if (!currentRealUser) return;
+            
+            // Load user's quests
+            realDatabase.ref('quests').orderByChild('userId').equalTo(currentRealUser.uid)
+                .on('value', (snapshot) => {
+                    realTimeQuests = [];
+                    snapshot.forEach((child) => {
+                        realTimeQuests.push({
+                            id: child.key,
+                            ...child.val()
+                        });
+                    });
+                    renderQuests();
+                });
+            
+            // Load user's markers
+            realDatabase.ref('markers').orderByChild('userId').equalTo(currentRealUser.uid)
+                .on('value', (snapshot) => {
+                    realTimeMarkers = [];
+                    snapshot.forEach((child) => {
+                        realTimeMarkers.push({
+                            id: child.key,
+                            ...child.val()
+                        });
+                    });
+                    renderMarkerList();
+                    addMarkersToMap();
+                });
+            
+            // Load all quests for quest board
+            realDatabase.ref('quests').orderByChild('createdAt')
+                .on('value', (snapshot) => {
+                    const allQuests = [];
+                    snapshot.forEach((child) => {
+                        allQuests.push({
+                            id: child.key,
+                            ...child.val()
+                        });
+                    });
+                    realTimeQuests = allQuests;
+                    renderQuests();
+                });
+            
+            // Load all markers for map
+            realDatabase.ref('markers').orderByChild('createdAt')
+                .on('value', (snapshot) => {
+                    const allMarkers = [];
+                    snapshot.forEach((child) => {
+                        allMarkers.push({
+                            id: child.key,
+                            ...child.val()
+                        });
+                    });
+                    realTimeMarkers = allMarkers;
+                    renderMarkerList();
+                    addMarkersToMap();
+                });
+        }
+        
+        // ==================== QUEST FUNCTIONS (REAL) ====================
+        window.submitQuest = async function() {
+            if (!currentRealUser) {
+                showNotification('Silakan login terlebih dahulu', 'error');
+                openModal('realLoginModal');
+                return;
+            }
+            
+            const title = document.getElementById('qTitle').value.trim();
+            const desc = document.getElementById('qDesc').value.trim();
+            const contact = document.getElementById('qContact').value.trim();
+            const category = document.getElementById('qCategory').value;
+            
+            if (!title || !desc || !contact) {
+                showNotification('Mohon lengkapi semua data!', 'error');
+                return;
+            }
+            
+            const questData = {
+                title,
+                description: desc,
+                contact,
+                category,
+                status: 'open',
+                userId: currentRealUser.uid,
+                userEmail: currentRealUser.email,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            try {
+                const newQuestRef = await realDatabase.ref('quests').push(questData);
+                showNotification('Quest berhasil diposting!', 'success');
+                closeModal('modalPostQuest');
+                
+                // Update user stats
+                await realDatabase.ref(`users/${currentRealUser.uid}/stats/questsPosted`).transaction((current) => {
+                    return (current || 0) + 1;
+                });
+                
+            } catch (error) {
+                console.error('Error posting quest:', error);
+                showNotification('Gagal memposting quest', 'error');
+            }
+        };
+        
+        // ==================== MARKER FUNCTIONS (REAL) ====================
+        window.addMarker = async function() {
+            if (!currentRealUser) {
+                showNotification('Silakan login terlebih dahulu', 'error');
+                openModal('realLoginModal');
+                return;
+            }
+            
+            const title = document.getElementById('markerTitle').value;
+            const desc = document.getElementById('markerDesc').value;
+            
+            if (!title) {
+                showNotification("Judul marker harus diisi!", 'error');
+                return;
+            }
+            
+            if (!currentMarker) {
+                showNotification("Klik peta lokasi dulu!", 'error');
+                return;
+            }
+            
+            const latlng = currentMarker.getLatLng();
+            
+            const markerData = {
+                title,
+                description: desc,
+                category: selectedCategory,
+                lat: latlng.lat,
+                lng: latlng.lng,
+                userId: currentRealUser.uid,
+                userEmail: currentRealUser.email,
+                createdAt: new Date().toISOString()
+            };
+            
+            try {
+                const newMarkerRef = await realDatabase.ref('markers').push(markerData);
+                showNotification('Marker berhasil ditambahkan!', 'success');
+                
+                // Update user stats
+                await realDatabase.ref(`users/${currentRealUser.uid}/stats/markersPosted`).transaction((current) => {
+                    return (current || 0) + 1;
+                });
+                
+                // Reset form
+                map.removeLayer(currentMarker);
+                currentMarker = null;
+                document.getElementById('markerTitle').value = '';
+                document.getElementById('markerDesc').value = '';
+                document.getElementById('btnAddMarker').disabled = true;
+                
+            } catch (error) {
+                console.error('Error adding marker:', error);
+                showNotification('Gagal menambahkan marker', 'error');
+            }
+        };
+        
+        // ==================== UI UPDATE FUNCTIONS ====================
+        function updateUIForRealUser(user) {
+            // Update auth buttons
+            document.querySelectorAll('.auth-hide').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Add user dropdown to nav if not exists
+            let userNav = document.querySelector('.user-nav');
+            if (!userNav) {
+                userNav = document.createElement('div');
+                userNav.className = 'user-nav';
+                userNav.innerHTML = `
+                    <div class="user-dropdown">
+                        <button class="cyber-tab">
+                            <i class="fas fa-user-circle"></i> ${user.email.split('@')[0]}
+                            <span id="reputationBadge"></span>
+                        </button>
+                        <div class="dropdown-menu" style="display: none; position: absolute; background: var(--card-bg); border: 1px solid var(--primary); border-radius: 5px; padding: 0.5rem; min-width: 150px; z-index: 1000;">
+                            <a href="#" onclick="showRealProfile()" style="display: block; padding: 0.5rem; color: var(--text); text-decoration: none;">
+                                <i class="fas fa-user"></i> Profile
+                            </a>
+                            <a href="#" onclick="showMyQuestsReal()" style="display: block; padding: 0.5rem; color: var(--text); text-decoration: none;">
+                                <i class="fas fa-scroll"></i> My Quests
+                            </a>
+                            <a href="#" onclick="showMyMarkersReal()" style="display: block; padding: 0.5rem; color: var(--text); text-decoration: none;">
+                                <i class="fas fa-map-marker-alt"></i> My Markers
+                            </a>
+                            <hr style="border-color: rgba(255,255,255,0.1); margin: 0.5rem 0;">
+                            <a href="#" onclick="logoutReal()" style="display: block; padding: 0.5rem; color: var(--danger); text-decoration: none;">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                `;
+                document.querySelector('.nav-tabs').appendChild(userNav);
+                
+                // Add dropdown toggle
+                userNav.querySelector('.cyber-tab').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const dropdown = this.nextElementSibling;
+                    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function() {
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.style.display = 'none';
+                    });
+                });
+            }
+            
+            // Load reputation badge
+            loadReputationBadge(user.uid);
+        }
+        
+        function updateUIForRealGuest() {
+            // Show login button
+            document.querySelectorAll('.auth-hide').forEach(el => {
+                el.style.display = 'inline-block';
+            });
+            
+            // Remove user dropdown
+            const userNav = document.querySelector('.user-nav');
+            if (userNav) {
+                userNav.remove();
+            }
+        }
+        
+        function loadReputationBadge(userId) {
+            realDatabase.ref(`users/${userId}/reputation`).on('value', (snapshot) => {
+                const reputation = snapshot.val() || 50;
+                const badge = document.getElementById('reputationBadge');
+                if (badge) {
+                    let badgeClass = '';
+                    if (reputation >= 80) badgeClass = 'real-badge';
+                    else if (reputation >= 60) badgeClass = 'verified-badge';
+                    
+                    badge.innerHTML = `<span class="${badgeClass}">${reputation}</span>`;
+                }
+            });
+        }
+        
+        // ==================== HELPER FUNCTIONS ====================
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `realtime-notification ${type}`;
+            
+            let icon = 'fas fa-info-circle';
+            if (type === 'success') icon = 'fas fa-check-circle';
+            if (type === 'error') icon = 'fas fa-exclamation-circle';
+            if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+            
+            notification.innerHTML = `
+                <i class="${icon}"></i>
+                <span>${message}</span>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+        
+        // ==================== GLOBAL VARIABLES (Original App) ====================
+        let map, currentMarker = null;
+        let selectedCategory = 'traffic';
+        let currentQuestId = null;
+        let currentQuestFilter = 'all';
+        let currentQuestSearch = '';
+        let markerLayerGroup = L.layerGroup();
+        let currentMapFilter = 'all';
+        let selectedModel = 'dex75';
+        let mapMarkers = {};
+        
+        // ==================== LOADING SCREEN ====================
+        function simulateLoading() {
+            const loadingBar = document.getElementById('loading-bar');
+            const loadingPercentage = document.getElementById('loading-percentage');
+            const loadingScreen = document.getElementById('loading-screen');
+            let progress = 0;
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 100) progress = 100;
+                loadingBar.style.width = `${progress}%`;
+                loadingPercentage.textContent = `${Math.floor(progress)}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loadingScreen.style.opacity = '0';
+                        setTimeout(() => {
+                            loadingScreen.style.display = 'none';
+                        }, 500);
+                    }, 500);
+                }
+            }, 200);
+        }
+        
+        // ==================== TAB SWITCHING ====================
+        function switchTab(tabId) {
+            if (tabId === 'admin') {
+                document.querySelectorAll('.app-section').forEach(el => {
+                    if (el.id !== 'admin') {
+                        el.style.display = 'none';
+                    } else {
+                        el.style.display = 'block';
+                        el.classList.add('active');
+                    }
+                });
+                
+                document.querySelectorAll('.cyber-tab').forEach(el => el.classList.remove('active'));
+                document.querySelector('.cyber-tab').classList.add('active');
+                return;
+            }
+            
+            document.querySelectorAll('.app-section').forEach(el => {
+                el.style.display = 'block';
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.cyber-tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            
+            const tabs = document.querySelectorAll('.cyber-tab');
+            tabs.forEach(tab => {
+                const tabText = tab.textContent.trim().split(' ').pop().toLowerCase();
+                if (tabText === tabId || (tabId === 'chat' && tabText === 'ai')) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            if(tabId === 'maps' && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        }
+        
+        // ==================== MAP FUNCTIONS ====================
+        function initMap() {
+            map = L.map('map').setView([-6.200000, 106.816666], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            markerLayerGroup.addTo(map);
+            
+            map.on('click', function(e) {
+                if(currentMarker) map.removeLayer(currentMarker);
+                currentMarker = L.marker(e.latlng).addTo(map);
+                document.getElementById('btnAddMarker').disabled = false;
+                
+                const panel = document.getElementById('mapPanel');
+                if(window.innerWidth <= 768 && panel.classList.contains('hidden-panel')) {
+                    toggleMapPanel();
+                }
+            });
+        }
+        
+        function addMarkersToMap() {
+            realTimeMarkers.forEach(markerData => {
+                addMarkerToMap(markerData);
+            });
+        }
+        
+        function addMarkerToMap(markerData) {
+            const marker = L.marker([markerData.lat, markerData.lng]).addTo(markerLayerGroup);
+            marker.bindPopup(`
+                <b>${markerData.title}</b><br>
+                ${markerData.description}<br>
+                <i>Category: ${markerData.category}</i><br>
+                <small>Added by: ${markerData.userEmail}</small>
+            `);
+            mapMarkers[markerData.id] = marker;
+        }
+        
+        function toggleMapPanel() {
+            document.getElementById('mapPanel').classList.toggle('hidden-panel');
+        }
+        
+        function toggleMapFilter() {
+            const filterOptions = document.getElementById('mapFilterOptions');
+            const filterBtn = document.querySelector('.map-filter-btn');
+            const isHidden = filterOptions.style.display === 'none';
+            filterOptions.style.display = isHidden ? 'block' : 'none';
+            filterBtn.classList.toggle('active', isHidden);
+        }
+        
+        function selectCategory(elem, cat) {
+            document.querySelectorAll('.marker-categories .category-btn').forEach(btn => btn.classList.remove('active'));
+            elem.classList.add('active');
+            selectedCategory = cat;
+        }
+        
+        function saveCustomCategory() {
+            const name = document.getElementById('customCatName').value.trim();
+            if(!name) return showNotification("Nama kategori tidak boleh kosong!", 'error');
+            const catId = 'custom-' + name.toLowerCase().replace(/\s/g, '-');
+            
+            if (document.querySelector(`.category-btn[onclick*="${catId}"]`)) {
+                 return showNotification(`Kategori "${name}" sudah ada!`, 'warning');
+            }
+            
+            const container = document.getElementById('categoryGrid');
+            const newBtn = document.createElement('div');
+            newBtn.className = 'category-btn';
+            newBtn.innerHTML = `<i class="fas fa-star"></i> ${name}`;
+            newBtn.onclick = function() { selectCategory(this, catId) };
+            container.appendChild(newBtn);
+            
+            document.getElementById('customCatName').value = '';
+            showNotification(`Kategori "${name}" berhasil disimpan!`, 'success');
+            selectCategory(newBtn, catId);
+        }
+        
+        function filterMapMarkers(event, category) {
+            currentMapFilter = category;
+            document.querySelectorAll('#mapFilterOptions .filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            renderMarkerList();
+        }
+        
+        // ==================== QUEST FUNCTIONS ====================
+        function filterQuests(event, category) {
+            currentQuestFilter = category;
+            document.querySelectorAll('.quest-controls .filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            renderQuests();
+        }
+        
+        function renderQuests() {
+            const container = document.getElementById('questListContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            let filteredQuests = realTimeQuests;
+            
+            if (currentQuestFilter !== 'all') {
+                filteredQuests = filteredQuests.filter(q => q.category === currentQuestFilter);
+            }
+            
+            if (currentQuestSearch) {
+                filteredQuests = filteredQuests.filter(q => 
+                    q.title.toLowerCase().includes(currentQuestSearch) || 
+                    q.description.toLowerCase().includes(currentQuestSearch) ||
+                    q.userEmail.toLowerCase().includes(currentQuestSearch)
+                );
+            }
+            
+            if (filteredQuests.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Tidak ada quest yang cocok.</div>';
+                return;
+            }
+            
+            filteredQuests.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'quest-item';
+                const statusClass = q.status === 'open' ? 'status-open' : 'status-taken';
+                const statusText = q.status === 'open' ? 'OPEN' : 'TAKEN';
+                item.innerHTML = `
+                    <span class="quest-status ${statusClass}">${statusText}</span>
+                    <h4>${q.title}</h4>
+                    <p style="font-size: 0.9rem; color: #aaa;">${q.description.substring(0, 80)}${q.description.length > 80 ? '...' : ''}</p>
+                    <div style="margin-top:0.5rem; display: flex; justify-content: space-between; font-size:0.8rem;">
+                        <span style="color: var(--primary);"><i class="fas fa-user"></i> ${q.userEmail}</span>
+                        <span style="color: var(--text-secondary);"><i class="fas fa-tag"></i> ${q.category.toUpperCase()}</span>
+                    </div>`;
+                item.onclick = () => openQuestDetail(q);
+                container.appendChild(item);
+            });
+        }
+        
+        function renderMarkerList() {
+            const container = document.getElementById('markerList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            const searchTerm = document.getElementById('mapSearch').value.toLowerCase();
+            const filteredMarkers = realTimeMarkers.filter(m => 
+                (currentMapFilter === 'all' || m.category === currentMapFilter) &&
+                (m.title.toLowerCase().includes(searchTerm) || m.description.toLowerCase().includes(searchTerm))
+            );
+            
+            if (filteredMarkers.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Tidak ada marker yang cocok.</div>';
+                return;
+            }
+            
+            filteredMarkers.forEach((markerData) => {
+                const item = document.createElement('div');
+                item.className = 'marker-item';
+                item.onclick = () => {
+                    map.setView([markerData.lat, markerData.lng], 15);
+                    if (mapMarkers[markerData.id]) {
+                        mapMarkers[markerData.id].openPopup();
+                    }
+                };
+                item.innerHTML = `<h4>${markerData.title}</h4><p>${markerData.description}</p><span class="marker-category">${markerData.category}</span>`;
+                container.appendChild(item);
+            });
+        }
+        
+        // ==================== MODAL FUNCTIONS ====================
+        function openModal(id) { 
+            document.getElementById(id).classList.add('active'); 
+        }
+        
+        function closeModal(id) { 
+            document.getElementById(id).classList.remove('active'); 
+        }
+        
+        // ==================== QUEST OPERATIONS ====================
+        function openQuestDetail(quest) {
+            currentQuestId = quest.id;
+            document.getElementById('dTitle').innerText = quest.title;
+            document.getElementById('dUser').innerText = quest.userEmail;
+            document.getElementById('dDesc').innerText = quest.description;
+            document.getElementById('dCategory').innerText = quest.category.toUpperCase();
+            
+            const cleanContact = quest.contact.replace(/\D/g, '');
+            document.getElementById('btnWA').onclick = function() { 
+                window.open(`https://wa.me/${cleanContact}`, '_blank'); 
+            };
+            
+            const btnTake = document.getElementById('btnTake');
+            if(quest.status === 'taken') {
+                btnTake.disabled = true; 
+                btnTake.innerHTML = "<i class='fas fa-lock'></i> SUDAH DIAMBIL";
+            } else {
+                btnTake.disabled = false; 
+                btnTake.innerHTML = '<i class="fas fa-check-circle"></i> AMBIL ORDER';
+            }
+            openModal('modalQuestDetail');
+        }
+        
+        function takeOrder() {
+            // In REAL system, this would update the quest status in Firebase
+            const quest = realTimeQuests.find(x => x.id === currentQuestId);
+            if(quest && quest.status === 'open') {
+                realDatabase.ref(`quests/${currentQuestId}/status`).set('taken');
+                closeModal('modalQuestDetail');
+                showNotification(`Order "${quest.title}" berhasil diambil! Silakan hubungi ${quest.userEmail}.`, 'success');
+            }
+        }
+        
+        // ==================== TOOLS FUNCTIONS ====================
+        async function checkWhois() {
+            // ... (same as before)
+        }
+        
+        // ==================== CHAT AI FUNCTIONS ====================
+        async function sendMessage() {
+            // ... (same as before)
+        }
+        
+        // ==================== INITIALIZATION ====================
+        window.onload = function() {
+            simulateLoading();
+            initMap();
+            
+            // Initialize REAL system auth state listener
+            realAuth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentRealUser = user;
+                    updateUIForRealUser(user);
+                    loadRealUserData();
+                } else {
+                    currentRealUser = null;
+                    updateUIForRealGuest();
+                }
+            });
+            
+            // Event Listeners
+            const questSearch = document.getElementById('questSearch');
+            if (questSearch) {
+                questSearch.addEventListener('input', function() {
+                    currentQuestSearch = this.value.toLowerCase();
+                    renderQuests();
+                });
+            }
+            
+            const mapSearch = document.getElementById('mapSearch');
+            if (mapSearch) {
+                mapSearch.addEventListener('input', function() {
+                    renderMarkerList();
+                });
+            }
+            
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault(); 
+                        sendMessage();
+                    }
+                });
+                
+                chatInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+            }
+            
+            // Add auth button to header
+            const navTabs = document.querySelector('.nav-tabs');
+            const authButton = document.createElement('button');
+            authButton.className = 'cyber-tab auth-hide';
+            authButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> LOGIN';
+            authButton.onclick = function() { openModal('realLoginModal'); };
+            navTabs.appendChild(authButton);
+            
+            // Add auth button styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .auth-hide { display: inline-block; }
+                .auth-show { display: none; }
+                .user-dropdown { position: relative; }
+                .dropdown-menu a:hover { background: rgba(0,240,255,0.1); }
+            `;
+            document.head.appendChild(style);
+        };
+        
+        // ==================== MODAL SHOW FUNCTIONS ====================
+        window.showRealLoginModal = function() {
+            openModal('realLoginModal');
+        };
+        
+        window.showRealRegisterModal = function() {
+            openModal('realRegisterModal');
+        };
+        
+        window.showRealResetModal = function() {
+            openModal('realResetModal');
+        };
+        
+        window.showRealProfile = async function() {
+            if (!currentRealUser) return;
+            
+            try {
+                const userRef = realDatabase.ref(`users/${currentRealUser.uid}`);
+                const snapshot = await userRef.once('value');
+                const userData = snapshot.val();
+                
+                const profileContent = document.getElementById('realProfileContent');
+                if (profileContent) {
+                    profileContent.innerHTML = `
+                        <h3 style="color: var(--primary); margin-bottom: 1rem;">
+                            <i class="fas fa-user-circle"></i> PROFILE
+                        </h3>
+                        
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                                <div style="width: 80px; height: 80px; background: linear-gradient(45deg, var(--primary), var(--secondary)); 
+                                     border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                                    ${userData?.email?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                    <h4 style="color: var(--text); margin: 0 0 5px 0;">${userData?.email}</h4>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                                        Member since: ${new Date(userData?.createdAt).toLocaleDateString('id-ID')}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; color: var(--primary); font-weight: bold;">
+                                        ${userData?.stats?.markersPosted || 0}
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Markers Posted</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; color: var(--accent); font-weight: bold;">
+                                        ${userData?.stats?.questsPosted || 0}
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Quests Posted</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; color: var(--warning); font-weight: bold;">
+                                        ${userData?.reputation || 50}
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Reputation</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 2rem; color: var(--success); font-weight: bold;">
+                                        ${userData?.stats?.completedTransactions || 0}
+                                    </div>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem;">Transactions</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="cyber-button" onclick="closeModal('realProfileModal')">
+                            <i class="fas fa-times"></i> TUTUP
+                        </button>
+                    `;
+                }
+                
+                openModal('realProfileModal');
+                
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showNotification('Gagal memuat profile', 'error');
+            }
+        };
+        
+        // Dummy function for demo
+        function sendOTPEmail(email) {
+            console.log(`OTP would be sent to: ${email}`);
+            // In production, integrate with EmailJS or backend service
+        }
+    </script>
+</body>
+</html>
