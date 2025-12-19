@@ -1,6 +1,6 @@
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
+const express = require("express");
+const path = require("path");
+const cors = require("cors");
 require('dotenv').config();
 
 const app = express();
@@ -59,6 +59,24 @@ app.get('/api/whois/:domain', async (req, res) => {
       expires: isRegistered ? '2024-01-15' : null,
       registrar: isRegistered ? 'PANDI' : null,
       message: 'WHOIS lookup completed'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+app.get('/api/download', async (req, res) => {
+  try {
+    const { url, type } = req.query;
+    
+    res.json({
+      success: true,
+      message: 'Downloader service will be implemented soon',
+      url: url,
+      type: type
     });
   } catch (error) {
     res.status(500).json({ 
